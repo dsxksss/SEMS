@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sems.sportseventmanagementsystem.mapper.EventMapper">
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.sems.sportseventmanagementsystem.model.entity.Event">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="description" property="description" />
+        <result column="start_time" property="startTime" />
+        <result column="end_time" property="endTime" />
+        <result column="location" property="location" />
+        <result column="status" property="status" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="max_participants" property="maxParticipants" />
+        <result column="current_participants" property="currentParticipants" />
+    </resultMap>
+
+    <!-- 通用查询字段 -->
+    <sql id="Base_Column_List">
+        id, name, description, start_time, end_time, location, status, create_time, update_time, max_participants, current_participants
+    </sql>
+
+    <!-- 插入赛事 -->
+    <insert id="insert" parameterType="com.sems.sportseventmanagementsystem.model.entity.Event" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO event (
+            name, description, start_time, end_time, location, status, create_time, update_time, max_participants, current_participants
+        ) VALUES (
+            #{name}, #{description}, #{startTime}, #{endTime}, #{location}, #{status}, #{createTime}, #{updateTime}, #{maxParticipants}, #{currentParticipants}
+        )
+    </insert>
+
+    <!-- 更新赛事 -->
+    <update id="update" parameterType="com.sems.sportseventmanagementsystem.model.entity.Event">
+        UPDATE event
+        SET name = #{name},
+            description = #{description},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            location = #{location},
+            status = #{status},
+            update_time = #{updateTime},
+            max_participants = #{maxParticipants},
+            current_participants = #{currentParticipants}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除赛事 -->
+    <delete id="delete" parameterType="java.lang.Long">
+        DELETE FROM event WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID查询赛事 -->
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List" />
+        FROM event
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询所有赛事 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM event
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 分页查询赛事 -->
+    <select id="selectByPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM event
+        ORDER BY start_time ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 根据状态查询赛事 -->
+    <select id="selectByStatus" resultMap="BaseResultMap" parameterType="java.lang.String">
+        SELECT <include refid="Base_Column_List" />
+        FROM event
+        WHERE status = #{status}
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 根据时间范围查询赛事 -->
+    <select id="selectByTimeRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM event
+        WHERE start_time BETWEEN #{startTime} AND #{endTime}
+        ORDER BY start_time ASC
+    </select>
+</mapper> 
