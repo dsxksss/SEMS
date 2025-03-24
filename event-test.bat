@@ -1,14 +1,15 @@
 @echo off
-echo 清理项目...
-call mvn clean
+chcp 65001 > nul
+@REM echo 清理项目...
+@REM call .\mvnw.cmd clean
 
 echo 编译项目...
-call mvn compile -DskipTests
+call .\mvnw.cmd compile -DskipTests
 
 echo 编译测试文件...
-call mvn test-compile -DskipTests
+call .\mvnw.cmd test-compile -DskipTests
 
 echo 运行赛事报名流程测试...
-call mvn -Dtest=EventRegistrationMockTest test
+call .\mvnw.cmd -Dtest=EventRegistrationMockTest test
 
 pause 

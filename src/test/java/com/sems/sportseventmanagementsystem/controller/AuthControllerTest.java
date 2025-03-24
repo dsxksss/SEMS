@@ -1,7 +1,7 @@
 package com.sems.sportseventmanagementsystem.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sems.sportseventmanagementsystem.config.MyBatisTestConfig;
+import com.sems.sportseventmanagementsystem.config.JpaTestConfig;
 import com.sems.sportseventmanagementsystem.config.TestSecurityConfig;
 import com.sems.sportseventmanagementsystem.config.TestUtilsConfig;
 import com.sems.sportseventmanagementsystem.model.dto.UserDTO;
@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({TestSecurityConfig.class, TestUtilsConfig.class, MyBatisTestConfig.class})
+@Import({TestSecurityConfig.class, TestUtilsConfig.class, JpaTestConfig.class})
 @ActiveProfiles("test")
 class AuthControllerTest {
 

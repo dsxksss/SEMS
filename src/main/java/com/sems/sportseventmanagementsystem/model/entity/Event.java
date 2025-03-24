@@ -1,18 +1,43 @@
 package com.sems.sportseventmanagementsystem.model.entity;
 
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "event")
 public class Event {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(nullable = false)
     private String name;
+    
+    @Column(columnDefinition = "TEXT")
     private String description;
+    
+    @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
+    
+    @Column(name = "end_time", nullable = false)
     private LocalDateTime endTime;
+    
+    @Column(nullable = false)
     private String location;
+    
+    @Column(nullable = false)
     private String status;
+    
+    @Column(name = "create_time", nullable = false)
     private LocalDateTime createTime;
+    
+    @Column(name = "update_time", nullable = false)
     private LocalDateTime updateTime;
+    
+    @Column(name = "max_participants", nullable = false)
     private Integer maxParticipants;
+    
+    @Column(name = "current_participants", nullable = false)
     private Integer currentParticipants;
 
     public Long getId() {

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `role` varchar(20) NOT NULL,
   `create_time` datetime NOT NULL,
   `update_time` datetime NOT NULL,
-  `status` tinyint NOT NULL DEFAULT '1',
+  `status` int NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -22,11 +22,11 @@ CREATE TABLE IF NOT EXISTS `event` (
   `start_time` datetime NOT NULL,
   `end_time` datetime NOT NULL,
   `location` varchar(255) NOT NULL,
-  `status` tinyint NOT NULL DEFAULT '0',
+  `status` varchar(20) NOT NULL DEFAULT 'DRAFT',
   `create_time` datetime NOT NULL,
   `update_time` datetime NOT NULL,
-  `max_participants` int NOT NULL DEFAULT '0',
-  `current_participants` int NOT NULL DEFAULT '0',
+  `max_participants` int NOT NULL DEFAULT 0,
+  `current_participants` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `registration` (
   `user_id` bigint NOT NULL,
   `event_id` bigint NOT NULL,
   `registration_type` varchar(20) NOT NULL,
-  `status` tinyint NOT NULL DEFAULT '0',
+  `status` varchar(20) NOT NULL DEFAULT 'PENDING',
   `register_time` datetime NOT NULL,
   `update_time` datetime NOT NULL,
   `remark` varchar(255) DEFAULT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS `announcement` (
   `creator_id` bigint NOT NULL,
   `create_time` datetime NOT NULL,
   `update_time` datetime NOT NULL,
-  `status` tinyint NOT NULL DEFAULT '0',
+  `status` varchar(20) NOT NULL DEFAULT 'DRAFT',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

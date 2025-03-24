@@ -1,7 +1,7 @@
 package com.sems.sportseventmanagementsystem.service;
 
 import com.sems.sportseventmanagementsystem.exception.ResourceNotFoundException;
-import com.sems.sportseventmanagementsystem.mapper.EventMapper;
+import com.sems.sportseventmanagementsystem.repository.EventRepository;
 import com.sems.sportseventmanagementsystem.model.dto.EventDTO;
 import com.sems.sportseventmanagementsystem.model.entity.Event;
 import com.sems.sportseventmanagementsystem.service.impl.EventServiceImpl;
@@ -10,20 +10,22 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class EventServiceTest {
 
     @Mock
-    private EventMapper eventMapper;
+    private EventRepository eventRepository;
 
     @InjectMocks
     private EventServiceImpl eventService;
@@ -49,7 +51,7 @@ class EventServiceTest {
         mockEvent.setCreateTime(LocalDateTime.now());
         mockEvent.setUpdateTime(LocalDateTime.now());
 
-        // 创建模拟DTO
+        // 创建模拟事件DTO
         mockEventDTO = new EventDTO();
         mockEventDTO.setName("测试赛事");
         mockEventDTO.setDescription("这是一个测试赛事");
@@ -61,135 +63,145 @@ class EventServiceTest {
     }
 
     @Test
-    void createEvent() {
-        when(eventMapper.insert(any(Event.class))).thenReturn(1);
-
-        Event result = eventService.createEvent(mockEventDTO);
-
-        assertNotNull(result);
-        assertEquals(mockEventDTO.getName(), result.getName());
-        assertEquals(mockEventDTO.getDescription(), result.getDescription());
-        assertEquals(0, result.getCurrentParticipants());
-        verify(eventMapper, times(1)).insert(any(Event.class));
-    }
-
-    @Test
-    void updateEvent() {
-        when(eventMapper.selectById(anyLong())).thenReturn(mockEvent);
-        when(eventMapper.update(any(Event.class))).thenReturn(1);
-
-        Event result = eventService.updateEvent(1L, mockEventDTO);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals(mockEventDTO.getName(), result.getName());
-        verify(eventMapper, times(1)).selectById(anyLong());
-        verify(eventMapper, times(1)).update(any(Event.class));
-    }
-
-    @Test
-    void updateEventNotFound() {
-        when(eventMapper.selectById(anyLong())).thenReturn(null);
-
-        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
-            eventService.updateEvent(1L, mockEventDTO);
-        });
-
-        assertEquals("赛事不存在，ID: 1", exception.getMessage());
-        verify(eventMapper, times(1)).selectById(anyLong());
-        verify(eventMapper, never()).update(any(Event.class));
-    }
-
-    @Test
-    void deleteEvent() {
-        when(eventMapper.selectById(anyLong())).thenReturn(mockEvent);
-        when(eventMapper.delete(anyLong())).thenReturn(1);
-
-        boolean result = eventService.deleteEvent(1L);
-
-        assertTrue(result);
-        verify(eventMapper, times(1)).selectById(anyLong());
-        verify(eventMapper, times(1)).delete(anyLong());
-    }
-
-    @Test
-    void deleteEventNotFound() {
-        when(eventMapper.selectById(anyLong())).thenReturn(null);
-
-        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
-            eventService.deleteEvent(1L);
-        });
-
-        assertEquals("赛事不存在，ID: 1", exception.getMessage());
-        verify(eventMapper, times(1)).selectById(anyLong());
-        verify(eventMapper, never()).delete(anyLong());
-    }
-
-    @Test
     void getEventById() {
-        when(eventMapper.selectById(anyLong())).thenReturn(mockEvent);
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.of(mockEvent));
 
         Event result = eventService.getEventById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("测试赛事", result.getName());
-        verify(eventMapper, times(1)).selectById(anyLong());
+        verify(eventRepository, times(1)).findById(anyLong());
+    }
+
+    @Test
+    void getEventByIdNotFound() {
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            eventService.getEventById(1L);
+        });
+
+        assertTrue(exception.getMessage().contains("赛事不存在"));
+    }
+
+    @Test
+    void createEvent() {
+        when(eventRepository.save(any(Event.class))).thenReturn(mockEvent);
+
+        Event result = eventService.createEvent(mockEventDTO);
+
+        assertNotNull(result);
+        assertEquals("测试赛事", result.getName());
+        assertEquals("这是一个测试赛事", result.getDescription());
+        verify(eventRepository, times(1)).save(any(Event.class));
+    }
+
+    @Test
+    void updateEvent() {
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.of(mockEvent));
+        when(eventRepository.save(any(Event.class))).thenReturn(mockEvent);
+
+        EventDTO updateDTO = new EventDTO();
+        updateDTO.setName("更新的赛事名称");
+        updateDTO.setDescription("更新的赛事描述");
+
+        Event result = eventService.updateEvent(1L, updateDTO);
+
+        assertNotNull(result);
+        assertEquals("更新的赛事名称", result.getName());
+        assertEquals("更新的赛事描述", result.getDescription());
+        verify(eventRepository, times(1)).findById(anyLong());
+        verify(eventRepository, times(1)).save(any(Event.class));
+    }
+
+    @Test
+    void updateEventNotFound() {
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            eventService.updateEvent(1L, mockEventDTO);
+        });
+
+        assertTrue(exception.getMessage().contains("赛事不存在"));
+    }
+
+    @Test
+    void deleteEvent() {
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.of(mockEvent));
+        doNothing().when(eventRepository).deleteById(anyLong());
+
+        boolean result = eventService.deleteEvent(1L);
+
+        assertTrue(result);
+        verify(eventRepository, times(1)).findById(anyLong());
+        verify(eventRepository, times(1)).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteEventNotFound() {
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        Exception exception = assertThrows(ResourceNotFoundException.class, () -> {
+            eventService.deleteEvent(1L);
+        });
+
+        assertTrue(exception.getMessage().contains("赛事不存在"));
     }
 
     @Test
     void getAllEvents() {
         List<Event> events = new ArrayList<>();
         events.add(mockEvent);
-        when(eventMapper.selectAll()).thenReturn(events);
+        when(eventRepository.findAll()).thenReturn(events);
 
         List<Event> result = eventService.getAllEvents();
 
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("测试赛事", result.get(0).getName());
-        verify(eventMapper, times(1)).selectAll();
+        verify(eventRepository, times(1)).findAll();
     }
 
     @Test
     void getEventsByPage() {
         List<Event> events = new ArrayList<>();
         events.add(mockEvent);
-        when(eventMapper.selectByPage(anyInt(), anyInt())).thenReturn(events);
+        when(eventRepository.findByPage(any(Pageable.class))).thenReturn(events);
 
         List<Event> result = eventService.getEventsByPage(1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("测试赛事", result.get(0).getName());
-        verify(eventMapper, times(1)).selectByPage(anyInt(), anyInt());
+        verify(eventRepository, times(1)).findByPage(any(Pageable.class));
     }
 
     @Test
     void getEventsByStatus() {
         List<Event> events = new ArrayList<>();
         events.add(mockEvent);
-        when(eventMapper.selectByStatus(anyString())).thenReturn(events);
+        when(eventRepository.findByStatus(anyString())).thenReturn(events);
 
         List<Event> result = eventService.getEventsByStatus("OPEN");
 
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("测试赛事", result.get(0).getName());
-        verify(eventMapper, times(1)).selectByStatus(anyString());
+        verify(eventRepository, times(1)).findByStatus(anyString());
     }
 
     @Test
     void getUpcomingEvents() {
         List<Event> events = new ArrayList<>();
         events.add(mockEvent);
-        when(eventMapper.selectByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(events);
+        when(eventRepository.findByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(events);
 
         List<Event> result = eventService.getUpcomingEvents(7);
 
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("测试赛事", result.get(0).getName());
-        verify(eventMapper, times(1)).selectByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
+        verify(eventRepository, times(1)).findByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
     }
 } 

@@ -1,19 +1,49 @@
 package com.sems.sportseventmanagementsystem.model.entity;
 
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "registration",
+    indexes = {
+        @Index(name = "idx_user_id", columnList = "user_id"),
+        @Index(name = "idx_event_id", columnList = "event_id")
+    }
+)
 public class Registration {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(name = "user_id", nullable = false)
     private Long userId;
+    
+    @Column(name = "event_id", nullable = false)
     private Long eventId;
+    
+    @Column(name = "registration_type", nullable = false)
     private String registrationType;
+    
+    @Column(nullable = false)
     private String status;
+    
+    @Column(name = "register_time", nullable = false)
     private LocalDateTime registerTime;
+    
+    @Column(name = "update_time", nullable = false)
     private LocalDateTime updateTime;
+    
+    @Column
     private String remark;
     
     // 关联字段，不对应数据库字段
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", insertable = false, updatable = false)
     private Event event;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JoinTable(name = "user_table")
     private User user;
 
     public Long getId() {

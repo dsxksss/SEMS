@@ -1,15 +1,16 @@
 @echo off
-echo 清理项目...
-call mvn clean
+chcp 65001 > nul
+@REM echo 清理项目...
+@REM call .\mvnw.cmd clean
 
 echo 编译项目...
-call mvn compile -DskipTests
+call .\mvnw.cmd compile -DskipTests
 
 echo 编译测试文件...
-call mvn test-compile -DskipTests
+call .\mvnw.cmd test-compile -DskipTests
 
 echo 运行所有单元测试...
-call mvn -Dtest=com.sems.sportseventmanagementsystem.unit.*,com.sems.sportseventmanagementsystem.controller.SimpleUnitTest test
+call .\mvnw.cmd -Dtest=com.sems.sportseventmanagementsystem.unit.*,com.sems.sportseventmanagementsystem.controller.SimpleUnitTest test
 
 echo 测试完成，请检查结果
 

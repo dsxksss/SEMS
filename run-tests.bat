@@ -1,9 +1,10 @@
 @echo off
-echo 清理项目...
-call mvn clean
+chcp 65001 > nul
+@REM echo 清理项目...
+@REM call .\mvnw.cmd clean
 
 echo 编译项目...
-call mvn compile -DskipTests
+call .\mvnw.cmd compile -DskipTests
 
 echo 创建简单的测试类...
 if not exist src\test\java\com\sems\sportseventmanagementsystem\controller\WebMvcPingTest.java (
@@ -31,9 +32,9 @@ if not exist src\test\java\com\sems\sportseventmanagementsystem\controller\WebMv
 )
 
 echo 编译测试文件...
-call mvn test-compile -DskipTests
+call .\mvnw.cmd test-compile -DskipTests
 
-echo 运行单一测试文件...
-call mvn -Dtest=WebMvcPingTest test
+echo 运行全部API测试...
+call .\mvnw.cmd -Dtest=com.sems.sportseventmanagementsystem.controller.* test
 
 pause 
