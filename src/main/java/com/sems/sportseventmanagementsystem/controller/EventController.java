@@ -12,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/events")
+@CrossOrigin(origins = "*", allowCredentials = "false", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class EventController {
 
     @Autowired
@@ -21,7 +22,7 @@ public class EventController {
      * 创建新赛事
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    //@PreAuthorize("hasRole('ADMIN')")
     public Result<Event> createEvent(@RequestBody EventDTO eventDTO) {
         return Result.success(eventService.createEvent(eventDTO));
     }
@@ -30,7 +31,7 @@ public class EventController {
      * 更新赛事信息
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    //@PreAuthorize("hasRole('ADMIN')")
     public Result<Event> updateEvent(@PathVariable Long id, @RequestBody EventDTO eventDTO) {
         return Result.success(eventService.updateEvent(id, eventDTO));
     }
@@ -39,7 +40,7 @@ public class EventController {
      * 删除赛事
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    //@PreAuthorize("hasRole('ADMIN')")
     public Result<Boolean> deleteEvent(@PathVariable Long id) {
         boolean result = eventService.deleteEvent(id);
         return Result.success(result);
