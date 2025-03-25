@@ -7,15 +7,22 @@ import com.sems.sportseventmanagementsystem.repository.RegistrationRepository;
 import com.sems.sportseventmanagementsystem.model.entity.Event;
 import com.sems.sportseventmanagementsystem.model.entity.Registration;
 import com.sems.sportseventmanagementsystem.service.RegistrationService;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class RegistrationServiceImpl implements RegistrationService {
 
     @Autowired
@@ -42,7 +49,8 @@ public class RegistrationServiceImpl implements RegistrationService {
         }
 
         // 检查用户是否已报名
-        Optional<Registration> existingRegistration = registrationRepository.findByUserIdAndEventId(userId, registrationDTO.getEventId());
+        Optional<Registration> existingRegistration = registrationRepository.findByUserIdAndEventId(userId,
+                registrationDTO.getEventId());
         if (existingRegistration.isPresent()) {
             throw new ResourceNotFoundException("您已报名此赛事");
         }
@@ -142,4 +150,55 @@ public class RegistrationServiceImpl implements RegistrationService {
     public List<Registration> getRegistrationsByStatus(String status) {
         return registrationRepository.findByStatus(status);
     }
-} 
+
+    @Override
+    public byte[] exportRegistrations(Long eventId) {
+        // 获取赛事报名列表
+        List<Registration> registrations = getEventRegistrations(eventId);
+
+        // 导出为Excel
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            // 创建工作簿
+            try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+                // 创建工作表
+                XSSFSheet sheet = workbook.createSheet("报名信息");
+
+                // 设置表头
+                String[] headers = { "报名ID", "用户ID", "用户名", "赛事ID", "赛事名称", "报名时间", "状态", "备注" };
+                Row headerRow = sheet.createRow(0);
+                for (int i = 0; i < headers.length; i++) {
+                    Cell cell = headerRow.createCell(i);
+                    cell.setCellValue(headers[i]);
+                }
+
+                // 填充数据
+                int rowNum = 1;
+                for (Registration registration : registrations) {
+                    Row row = sheet.createRow(rowNum++);
+                    row.createCell(0).setCellValue(registration.getId());
+                    row.createCell(1).setCellValue(registration.getUserId());
+                    row.createCell(2)
+                            .setCellValue(registration.getUser() != null ? registration.getUser().getUsername() : "");
+                    row.createCell(3).setCellValue(registration.getEventId());
+                    row.createCell(4)
+                            .setCellValue(registration.getEvent() != null ? registration.getEvent().getName() : "");
+                    row.createCell(5).setCellValue(registration.getRegisterTime().toString());
+                    row.createCell(6).setCellValue(registration.getStatus());
+                    row.createCell(7).setCellValue(registration.getRemark() != null ? registration.getRemark() : "");
+                }
+
+                // 自动调整列宽
+                for (int i = 0; i < headers.length; i++) {
+                    sheet.autoSizeColumn(i);
+                }
+
+                // 写入输出流
+                workbook.write(out);
+                return out.toByteArray();
+            }
+        } catch (Exception e) {
+            log.error("导出报名数据失败", e);
+            throw new RuntimeException("导出报名数据失败", e);
+        }
+    }
+}

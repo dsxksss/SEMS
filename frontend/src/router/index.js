@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Home from '@/views/Home.vue'
 import { useUserStore } from '@/stores/user'
 
 // 路由配置
@@ -6,132 +7,127 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/Home.vue')
+    component: Home,
+    meta: { title: '首页' }
   },
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
-    meta: { guest: true }
+    meta: { title: '登录', guest: true }
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/Register.vue'),
-    meta: { guest: true }
+    meta: { title: '注册', guest: true }
   },
   {
     path: '/events',
     name: 'Events',
-    component: () => import('@/views/Events.vue')
+    component: () => import('@/views/Events.vue'),
+    meta: { title: '赛事活动' }
   },
   {
     path: '/events/:id',
     name: 'EventDetail',
-    component: () => import('@/views/EventDetail.vue')
+    component: () => import('@/views/EventDetail.vue'),
+    meta: { title: '赛事详情' }
   },
   {
     path: '/announcements',
     name: 'Announcements',
-    component: () => import('@/views/Announcements.vue')
+    component: () => import('@/views/Announcements.vue'),
+    meta: { title: '公告信息' }
   },
   {
-    // 用户中心
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),
-    meta: { requiresAuth: true }
+    meta: { title: '个人资料', requiresAuth: true }
   },
   {
-    // 运动员报名
-    path: '/athlete-registration',
-    name: 'AthleteRegistration',
-    component: () => import('@/views/AthleteRegistration.vue'),
-    meta: { requiresAuth: true, roles: ['ATHLETE'] }
-  },
-  {
-    // 观众报名
-    path: '/audience-registration',
-    name: 'AudienceRegistration',
-    component: () => import('@/views/AudienceRegistration.vue'),
-    meta: { requiresAuth: true, roles: ['USER'] }
-  },
-  {
-    // 管理员路由组
     path: '/admin',
     name: 'Admin',
-    component: () => import('@/views/admin/Layout.vue'),
-    meta: { requiresAuth: true, roles: ['ADMIN'] },
+    component: () => import('@/views/admin/Dashboard.vue'),
+    meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: '',
-        name: 'AdminDashboard',
-        component: () => import('@/views/admin/Dashboard.vue')
+        redirect: { name: 'AdminDashboard' }
       },
       {
-        path: 'users',
-        name: 'UserManagement',
-        component: () => import('@/views/admin/UserManagement.vue')
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: () => import('@/views/admin/Dashboard.vue'),
+        meta: { title: '管理控制台' }
       },
       {
         path: 'events',
-        name: 'EventManagement',
-        component: () => import('@/views/admin/EventManagement.vue')
+        name: 'AdminEvents',
+        component: () => import('@/views/admin/Events.vue'),
+        meta: { title: '赛事管理' }
       },
       {
-        path: 'registrations',
-        name: 'RegistrationManagement',
-        component: () => import('@/views/admin/RegistrationManagement.vue')
+        path: 'announcements',
+        name: 'AdminAnnouncements',
+        component: () => import('@/views/admin/Announcements.vue'),
+        meta: { title: '公告管理' }
       },
       {
-        path: 'reports',
-        name: 'Reports',
-        component: () => import('@/views/admin/Reports.vue')
-      },
-      {
-        path: 'results',
-        name: 'ResultManagement',
-        component: () => import('@/views/admin/ResultManagement.vue')
+        path: 'users',
+        name: 'AdminUsers',
+        component: () => import('@/views/admin/Users.vue'),
+        meta: { title: '用户管理' }
       }
     ]
   },
   {
+    path: '/test-api',
+    name: 'TestApi',
+    component: () => import('@/views/TestApi.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@/views/NotFound.vue')
+    component: () => import('@/views/NotFound.vue'),
+    meta: { title: '页面未找到' }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  }
 })
 
-// 路由守卫
+// 全局前置守卫
 router.beforeEach((to, from, next) => {
+  // 设置页面标题
+  document.title = to.meta.title ? `${to.meta.title} - 体育赛事管理系统` : '体育赛事管理系统'
+  
   const userStore = useUserStore()
-  const isLoggedIn = userStore.isLoggedIn
-  const userRole = userStore.role
-
-  // 需要登录但未登录
-  if (to.meta.requiresAuth && !isLoggedIn) {
+  
+  // 权限校验
+  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+    // 需要登录但未登录，重定向到登录页
     next({ name: 'Login', query: { redirect: to.fullPath } })
-    return
-  }
-
-  // 角色限制
-  if (to.meta.roles && isLoggedIn && !to.meta.roles.includes(userRole)) {
+  } else if (to.meta.requiresAdmin && userStore.user?.role !== 'ADMIN') {
+    // 需要管理员权限但不是管理员，重定向到首页
     next({ name: 'Home' })
-    return
-  }
-
-  // 已登录用户不应访问登录/注册页
-  if (to.meta.guest && isLoggedIn) {
+  } else if (to.meta.guest && userStore.isLoggedIn) {
+    // 游客专属页面但已登录，重定向到首页
     next({ name: 'Home' })
-    return
+  } else {
+    // 允许访问
+    next()
   }
-
-  next()
 })
 
 export default router 

@@ -78,64 +78,66 @@
           <el-tabs v-model="activeTab" class="mt-8">
             <el-tab-pane label="个人信息" name="info">
               <div class="py-4 max-w-3xl">
-                <el-form 
-                  ref="userFormRef"
-                  :model="userForm"
-                  :rules="userRules"
-                  label-width="100px"
-                  class="mt-4"
-                >
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <el-form-item label="用户名">
-                      <el-input v-model="userForm.username" disabled />
-                    </el-form-item>
+                <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                  <div class="md:grid md:grid-cols-3 md:gap-6">
+                    <!-- 个人资料 -->
+                    <div class="md:col-span-1">
+                      <div class="px-4 sm:px-0">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900">个人资料</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                          这些信息将会公开显示，请谨慎填写
+                        </p>
+                      </div>
+                    </div>
                     
-                    <el-form-item label="邮箱">
-                      <el-input v-model="userForm.email" disabled />
-                    </el-form-item>
-                    
-                    <el-form-item label="真实姓名" prop="realName">
-                      <el-input v-model="userForm.realName" placeholder="请输入您的真实姓名" />
-                    </el-form-item>
-                    
-                    <el-form-item label="联系电话" prop="phone">
-                      <el-input v-model="userForm.phone" placeholder="请输入您的联系电话" />
-                    </el-form-item>
-                    
-                    <el-form-item label="性别" prop="gender">
-                      <el-radio-group v-model="userForm.gender">
-                        <el-radio label="MALE">男</el-radio>
-                        <el-radio label="FEMALE">女</el-radio>
-                        <el-radio label="OTHER">其他</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
-                    
-                    <el-form-item label="生日" prop="birthdate">
-                      <el-date-picker 
-                        v-model="userForm.birthdate" 
-                        type="date" 
-                        placeholder="请选择您的生日"
-                        style="width: 100%"
-                      />
-                    </el-form-item>
+                    <div class="mt-5 md:mt-0 md:col-span-2">
+                      <div class="shadow sm:rounded-md sm:overflow-hidden">
+                        <div class="px-4 py-5 bg-white space-y-6 sm:p-6">
+                          <BaseForm
+                            :schema="profileSchema"
+                            submit-text="保存修改"
+                            @success="handleProfileSuccess"
+                            :on-submit="handleProfileSubmit"
+                          >
+                            <template #default="{ errors }">
+                              <BaseFormField
+                                name="username"
+                                label="用户名"
+                                required
+                                :disabled="true"
+                                help-text="用户名不可修改"
+                              />
+                              
+                              <BaseFormField
+                                name="email"
+                                label="电子邮箱"
+                                type="email"
+                                required
+                                placeholder="请输入电子邮箱"
+                              />
+                              
+                              <BaseFormField
+                                name="nickname"
+                                label="昵称"
+                                placeholder="请输入昵称"
+                                help-text="昵称将显示在您的个人主页"
+                              />
+                              
+                              <BaseFormField
+                                name="bio"
+                                label="个人简介"
+                                type="textarea"
+                                placeholder="请输入个人简介"
+                                :rows="4"
+                                help-text="简单介绍一下自己吧"
+                              />
+                            </template>
+                          </BaseForm>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <el-form-item label="个人简介" prop="bio">
-                    <el-input 
-                      v-model="userForm.bio" 
-                      type="textarea" 
-                      rows="4"
-                      placeholder="介绍一下您自己吧" 
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item>
-                    <el-button type="primary" @click="updateUserInfo" :loading="updating">
-                      更新信息
-                    </el-button>
-                    <el-button @click="resetForm">重置</el-button>
-                  </el-form-item>
-                </el-form>
+                </div>
               </div>
             </el-tab-pane>
             
@@ -311,46 +313,58 @@
             
             <el-tab-pane label="修改密码" name="password">
               <div class="py-4 max-w-md">
-                <el-form 
-                  ref="passwordFormRef"
-                  :model="passwordForm"
-                  :rules="passwordRules"
-                  label-width="120px"
-                >
-                  <el-form-item label="当前密码" prop="currentPassword">
-                    <el-input 
-                      v-model="passwordForm.currentPassword" 
-                      type="password" 
-                      show-password
-                      placeholder="请输入当前密码"
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item label="新密码" prop="newPassword">
-                    <el-input 
-                      v-model="passwordForm.newPassword" 
-                      type="password" 
-                      show-password
-                      placeholder="请输入新密码"
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item label="确认新密码" prop="confirmPassword">
-                    <el-input 
-                      v-model="passwordForm.confirmPassword" 
-                      type="password" 
-                      show-password
-                      placeholder="请再次输入新密码"
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item>
-                    <el-button type="primary" @click="updatePassword" :loading="updatingPassword">
-                      更新密码
-                    </el-button>
-                    <el-button @click="resetPasswordForm">重置</el-button>
-                  </el-form-item>
-                </el-form>
+                <div class="mt-10 sm:mt-0">
+                  <div class="md:grid md:grid-cols-3 md:gap-6">
+                    <div class="md:col-span-1">
+                      <div class="px-4 sm:px-0">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900">修改密码</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                          请确保使用安全的密码
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div class="mt-5 md:mt-0 md:col-span-2">
+                      <div class="shadow sm:rounded-md sm:overflow-hidden">
+                        <div class="px-4 py-5 bg-white space-y-6 sm:p-6">
+                          <BaseForm
+                            :schema="userSchemas.changePassword"
+                            submit-text="修改密码"
+                            @success="handlePasswordSuccess"
+                            :on-submit="handlePasswordSubmit"
+                          >
+                            <template #default="{ errors }">
+                              <BaseFormField
+                                name="oldPassword"
+                                label="当前密码"
+                                type="password"
+                                required
+                                placeholder="请输入当前密码"
+                              />
+                              
+                              <BaseFormField
+                                name="newPassword"
+                                label="新密码"
+                                type="password"
+                                required
+                                placeholder="请输入新密码"
+                                help-text="密码长度在6-20个字符之间"
+                              />
+                              
+                              <BaseFormField
+                                name="confirmPassword"
+                                label="确认新密码"
+                                type="password"
+                                required
+                                placeholder="请再次输入新密码"
+                              />
+                            </template>
+                          </BaseForm>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </el-tab-pane>
           </el-tabs>
@@ -462,6 +476,11 @@ import { useUserStore } from '@/stores/user'
 import { useRegistrationStore } from '@/stores/registration'
 import Header from '@/components/Header.vue'
 import axios from 'axios'
+import { userApi } from '@/api'
+import { userSchemas } from '@/utils/validation'
+import * as yup from 'yup'
+import BaseForm from '@/components/BaseForm.vue'
+import BaseFormField from '@/components/BaseFormField.vue'
 
 const userStore = useUserStore()
 const registrationStore = useRegistrationStore()
@@ -777,4 +796,41 @@ const viewCertificate = (result) => {
 const downloadCertificate = () => {
   // 实现下载证书的逻辑
 }
+
+// 个人资料验证规则
+const profileSchema = yup.object({
+  username: yup.string().required(),
+  email: yup.string().required('请输入电子邮箱').email('请输入有效的电子邮箱地址'),
+  nickname: yup.string().max(20, '昵称最多20个字符'),
+  bio: yup.string().max(200, '个人简介最多200个字符')
+})
+
+// 获取用户资料
+const fetchUserProfile = async () => {
+  const profile = await userApi.getProfile()
+  userStore.setUser(profile)
+  return profile
+}
+
+// 处理个人资料提交
+const handleProfileSubmit = async (values) => {
+  await userApi.updateProfile(values)
+}
+
+const handleProfileSuccess = () => {
+  ElMessage.success('个人资料更新成功')
+}
+
+// 处理密码修改
+const handlePasswordSubmit = async (values) => {
+  const { oldPassword, newPassword } = values
+  await userApi.changePassword({ oldPassword, newPassword })
+}
+
+const handlePasswordSuccess = () => {
+  ElMessage.success('密码修改成功')
+}
+
+// 页面加载时获取用户资料
+onMounted(fetchUserProfile)
 </script> 

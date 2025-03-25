@@ -1,162 +1,160 @@
 <template>
-  <div>
-    <Header />
-    <div class="container mx-auto px-4 py-8">
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">赛事活动</h1>
-        <p class="text-gray-600">探索各类体育赛事活动，立即报名参与</p>
-      </div>
-      
-      <!-- 搜索和筛选 -->
-      <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
-        <div class="flex flex-wrap gap-4 mb-4">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索赛事名称/地点"
-            class="max-w-xs"
-            clearable
-            @input="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><search /></el-icon>
-            </template>
-          </el-input>
-          
-          <el-select v-model="categoryFilter" placeholder="赛事类别" clearable @change="handleFilterChange">
-            <el-option label="全部类别" value="" />
-            <el-option
-              v-for="category in categories"
-              :key="category"
-              :label="category"
-              :value="category"
-            />
-          </el-select>
-          
-          <el-select v-model="statusFilter" placeholder="赛事状态" clearable @change="handleFilterChange">
-            <el-option label="全部状态" value="" />
-            <el-option label="报名中" value="UPCOMING" />
-            <el-option label="进行中" value="ONGOING" />
-            <el-option label="已结束" value="COMPLETED" />
-          </el-select>
-          
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            @change="handleFilterChange"
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-4">赛事活动</h1>
+      <p class="text-gray-600">探索各类体育赛事活动，立即报名参与</p>
+    </div>
+    
+    <!-- 搜索和筛选 -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+      <div class="flex flex-wrap gap-4 mb-4 filter-container">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索赛事名称/地点"
+          class="max-w-xs md:max-w-none md:w-auto flex-grow"
+          clearable
+          @input="handleSearch"
+        >
+          <template #prefix>
+            <el-icon><search /></el-icon>
+          </template>
+        </el-input>
+        
+        <el-select v-model="categoryFilter" placeholder="赛事类别" clearable @change="handleFilterChange" class="flex-grow md:flex-grow-0">
+          <el-option label="全部类别" value="" />
+          <el-option
+            v-for="category in categories"
+            :key="category"
+            :label="category"
+            :value="category"
           />
-        </div>
-      </div>
-      
-      <!-- 赛事列表 -->
-      <div v-if="loading" class="flex justify-center items-center h-64">
-        <el-skeleton :rows="3" animated />
-      </div>
-      
-      <div v-else-if="events.length === 0" class="flex flex-col items-center justify-center h-64">
-        <el-empty description="暂无符合条件的赛事" />
-      </div>
-      
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="event in events" :key="event.id" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
-          <div class="relative h-48 bg-gray-200">
-            <img 
-              v-if="event.coverImage" 
-              :src="event.coverImage" 
-              :alt="event.name" 
-              class="w-full h-full object-cover"
-            >
-            <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-500">
-              <span class="text-xl font-bold text-white">{{ event.name }}</span>
-            </div>
-            
-            <div class="absolute top-3 right-3">
-              <el-tag 
-                :type="getStatusType(event.status)" 
-                effect="dark"
-                size="large"
-                class="px-3 py-1"
-              >
-                {{ getStatusText(event.status) }}
-              </el-tag>
-            </div>
-            
-            <div v-if="isRegistrationDeadlineSoon(event.registrationDeadline)" class="absolute top-3 left-3">
-              <el-tag type="danger" effect="dark" size="large" class="px-3 py-1">
-                报名即将截止
-              </el-tag>
-            </div>
-          </div>
-          
-          <div class="p-4">
-            <div class="flex justify-between items-start mb-2">
-              <h2 class="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors duration-300 cursor-pointer" @click="goToEventDetail(event.id)">
-                {{ event.name }}
-              </h2>
-              <el-button v-if="event.featured" type="warning" size="small" plain>推荐</el-button>
-            </div>
-            
-            <div class="mb-3 text-sm text-gray-500">
-              <div class="flex items-center mb-1">
-                <el-icon><location /></el-icon>
-                <span class="ml-1">{{ event.location }}</span>
-              </div>
-              <div class="flex items-center mb-1">
-                <el-icon><calendar /></el-icon>
-                <span class="ml-1">{{ formatDate(event.eventDate) }}</span>
-              </div>
-              <div class="flex items-center">
-                <el-icon><timer /></el-icon>
-                <span class="ml-1">报名截止: {{ formatDate(event.registrationDeadline) }}</span>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <el-progress 
-                :percentage="calculateRegistrationPercentage(event)" 
-                :color="getRegistrationProgressColor(event)"
-                :format="() => `${event.registeredCount || 0}/${event.maxParticipants || '不限'}`"
-                :stroke-width="10"
-                :show-text="true"
-              />
-            </div>
-            
-            <div class="flex flex-wrap gap-2 mb-3">
-              <el-tag v-for="tag in (event.categories || [])" :key="tag" size="small" effect="plain">
-                {{ tag }}
-              </el-tag>
-            </div>
-            
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-500">已有 {{ event.registeredCount || 0 }} 人报名</span>
-              <el-button 
-                type="primary" 
-                :disabled="event.status === 'COMPLETED' || isRegistrationClosed(event)" 
-                @click="goToRegistration(event.id)"
-              >
-                {{ getActionButtonText(event) }}
-              </el-button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 分页 -->
-      <div class="flex justify-center mt-8">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[9, 18, 36, 72]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="totalEvents"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+        </el-select>
+        
+        <el-select v-model="statusFilter" placeholder="赛事状态" clearable @change="handleFilterChange" class="flex-grow md:flex-grow-0">
+          <el-option label="全部状态" value="" />
+          <el-option label="报名中" value="UPCOMING" />
+          <el-option label="进行中" value="ONGOING" />
+          <el-option label="已结束" value="COMPLETED" />
+        </el-select>
+        
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
+          @change="handleFilterChange"
+          class="flex-grow"
         />
       </div>
+    </div>
+    
+    <!-- 赛事列表 -->
+    <div v-if="loading" class="flex justify-center items-center h-64">
+      <el-skeleton :rows="3" animated />
+    </div>
+    
+    <div v-else-if="events.length === 0" class="flex flex-col items-center justify-center h-64">
+      <el-empty description="暂无符合条件的赛事" />
+    </div>
+    
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="event in events" :key="event.id" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300 event-card">
+        <div class="relative h-48 bg-gray-200">
+          <img 
+            v-if="event.coverImage" 
+            :src="event.coverImage" 
+            :alt="event.name" 
+            class="w-full h-full object-cover"
+          >
+          <div v-else class="w-full h-full flex items-center justify-center image-placeholder">
+            <span class="text-xl font-bold text-white">{{ event.name }}</span>
+          </div>
+          
+          <div class="absolute top-3 right-3">
+            <el-tag 
+              :type="getStatusType(event.status)" 
+              effect="dark"
+              size="large"
+              class="px-3 py-1"
+            >
+              {{ getStatusText(event.status) }}
+            </el-tag>
+          </div>
+          
+          <div v-if="isRegistrationDeadlineSoon(event.registrationDeadline)" class="absolute top-3 left-3">
+            <el-tag type="danger" effect="dark" size="large" class="px-3 py-1">
+              报名即将截止
+            </el-tag>
+          </div>
+        </div>
+        
+        <div class="p-4">
+          <div class="flex justify-between items-start mb-2">
+            <h2 class="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors duration-300 cursor-pointer event-title" @click="goToEventDetail(event.id)">
+              {{ event.name }}
+            </h2>
+            <el-button v-if="event.featured" type="warning" size="small" plain>推荐</el-button>
+          </div>
+          
+          <div class="mb-3 text-sm text-gray-500">
+            <div class="flex items-center mb-1">
+              <el-icon><location /></el-icon>
+              <span class="ml-1 event-location">{{ event.location }}</span>
+            </div>
+            <div class="flex items-center mb-1">
+              <el-icon><calendar /></el-icon>
+              <span class="ml-1">{{ formatDate(event.startTime || event.eventDate) }}</span>
+            </div>
+            <div class="flex items-center">
+              <el-icon><timer /></el-icon>
+              <span class="ml-1">报名截止: {{ formatDate(event.registrationDeadline) }}</span>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <el-progress 
+              :percentage="calculateRegistrationPercentage(event)" 
+              :color="getRegistrationProgressColor(event)"
+              :format="() => `${event.currentParticipants || event.registeredCount || 0}/${event.maxParticipants || '不限'}`"
+              :stroke-width="10"
+              :show-text="true"
+            />
+          </div>
+          
+          <div class="flex flex-wrap gap-2 mb-3">
+            <el-tag v-for="tag in (event.categories || [])" :key="tag" size="small" effect="plain">
+              {{ tag }}
+            </el-tag>
+          </div>
+          
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-500">已有 {{ event.currentParticipants || event.registeredCount || 0 }} 人报名</span>
+            <el-button 
+              type="primary" 
+              :disabled="event.status === 'COMPLETED' || isRegistrationClosed(event)" 
+              @click="goToRegistration(event.id)"
+            >
+              {{ getActionButtonText(event) }}
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 分页 -->
+    <div class="flex justify-center mt-8">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[9, 18, 36, 72]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="totalEvents"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
     </div>
   </div>
 </template>
@@ -166,20 +164,20 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Location, Calendar, Timer } from '@element-plus/icons-vue'
-import axios from 'axios'
-import Header from '@/components/Header.vue'
+import { useEventStore } from '@/stores/event'
 
 const router = useRouter()
+const eventStore = useEventStore()
 
 // 赛事列表
-const events = ref([])
-const loading = ref(true)
+const events = computed(() => eventStore.events)
+const loading = computed(() => eventStore.loading)
 const error = ref(null)
 
 // 分页
 const currentPage = ref(1)
 const pageSize = ref(9)
-const totalEvents = ref(0)
+const totalEvents = computed(() => eventStore.pagination.total)
 
 // 搜索和筛选
 const searchQuery = ref('')
@@ -203,7 +201,6 @@ const categories = ref([
 
 // 获取赛事列表
 const fetchEvents = async () => {
-  loading.value = true
   error.value = null
   
   try {
@@ -221,15 +218,10 @@ const fetchEvents = async () => {
       params.endDate = dateRange.value[1]
     }
     
-    const response = await axios.get('/api/events/public', { params })
-    
-    events.value = response.data.data.list || []
-    totalEvents.value = response.data.data.total || 0
+    await eventStore.fetchPublicEvents(params)
   } catch (err) {
     error.value = err.response?.data?.message || '获取赛事列表失败'
     ElMessage.error(error.value)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -279,70 +271,76 @@ const getStatusText = (status) => {
 
 // 计算报名进度百分比
 const calculateRegistrationPercentage = (event) => {
-  if (!event.maxParticipants || event.maxParticipants === 0) {
+  if (!event.maxParticipants || event.maxParticipants <= 0) {
     return 0
   }
-  
-  const percentage = (event.registeredCount / event.maxParticipants) * 100
-  return Math.min(100, percentage)
+  const percentage = (event.currentParticipants || event.registeredCount || 0) / event.maxParticipants * 100
+  return Math.min(Math.round(percentage), 100)
 }
 
-// 获取报名进度条颜色
+// 获取报名进度颜色
 const getRegistrationProgressColor = (event) => {
-  if (!event.maxParticipants || event.maxParticipants === 0) {
-    return '#409eff'
-  }
-  
-  const percentage = (event.registeredCount / event.maxParticipants) * 100
-  
-  if (percentage >= 80) {
-    return '#F56C6C'
-  } else if (percentage >= 50) {
-    return '#E6A23C'
+  const percentage = calculateRegistrationPercentage(event)
+  if (percentage >= 90) {
+    return '#F56C6C' // 接近满
+  } else if (percentage >= 70) {
+    return '#E6A23C' // 较多
   } else {
-    return '#67C23A'
+    return '#67C23A' // 充足
   }
+}
+
+// 判断报名是否已关闭
+const isRegistrationClosed = (event) => {
+  if (!event.registrationDeadline) {
+    return false
+  }
+  const deadline = new Date(event.registrationDeadline)
+  return deadline < new Date()
 }
 
 // 判断报名是否即将截止
 const isRegistrationDeadlineSoon = (deadline) => {
-  if (!deadline) return false
-  
-  const today = new Date()
+  if (!deadline) {
+    return false
+  }
   const deadlineDate = new Date(deadline)
-  const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
-  
-  return diffDays > 0 && diffDays <= 3
+  const now = new Date()
+  const diffDays = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
+  return diffDays >= 0 && diffDays <= 2 // 2天内截止
 }
 
-// 判断报名是否已截止
-const isRegistrationClosed = (event) => {
-  if (event.status === 'CANCELED') return true
-  if (!event.registrationDeadline) return false
-  
-  const today = new Date()
-  const deadlineDate = new Date(event.registrationDeadline)
-  
-  return today > deadlineDate
-}
-
-// 获取操作按钮文本
+// 获取按钮文本
 const getActionButtonText = (event) => {
   if (event.status === 'COMPLETED') {
-    return '查看详情'
+    return '查看结果'
   } else if (isRegistrationClosed(event)) {
     return '报名已截止'
-  } else if (event.status === 'CANCELED') {
-    return '已取消'
   } else {
     return '立即报名'
   }
 }
 
-// 格式化日期
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
+// 导航到赛事详情
+const goToEventDetail = (id) => {
+  router.push(`/events/${id}`)
+}
+
+// 导航到报名页面
+const goToRegistration = (id) => {
+  // 修改为显示提示消息，未来可以实现报名功能
+  ElMessage({
+    message: '报名功能正在开发中',
+    type: 'info'
+  })
+  // router.push(`/registration/${id}`)
+}
+
+// 日期格式化
+const formatDate = (dateStr) => {
+  if (!dateStr) return '未设置'
+  
+  const date = new Date(dateStr)
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'long',
@@ -350,103 +348,77 @@ const formatDate = (dateString) => {
   })
 }
 
-// 跳转到赛事详情
-const goToEventDetail = (eventId) => {
-  router.push(`/events/${eventId}`)
+// 页面加载时获取数据
+onMounted(fetchEvents)
+</script>
+
+<style scoped>
+/* 卡片悬停效果 */
+.event-card {
+  transition: all 0.3s ease;
 }
 
-// 跳转到报名页面
-const goToRegistration = (eventId) => {
-  router.push(`/registration/${eventId}`)
+.event-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-// 生命周期钩子
-onMounted(() => {
-  fetchEvents()
+/* 标签样式增强 */
+.el-tag {
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+/* 进度条自定义样式 */
+:deep(.el-progress-bar__outer) {
+  border-radius: 4px;
+  background-color: #f0f0f0;
+}
+
+:deep(.el-progress-bar__inner) {
+  border-radius: 4px;
+}
+
+/* 响应式布局优化 */
+@media (max-width: 768px) {
+  .filter-container {
+    flex-direction: column;
+  }
   
-  // 模拟数据
-  events.value = [
-    {
-      id: 1,
-      name: '2023年春季校园运动会',
-      location: '中央体育场',
-      description: '校园传统体育盛事，包含田径、球类等多种项目',
-      eventDate: '2023-04-15',
-      registrationDeadline: '2023-04-01',
-      maxParticipants: 500,
-      registeredCount: 320,
-      featured: true,
-      categories: ['田径', '球类'],
-      status: 'COMPLETED'
-    },
-    {
-      id: 2,
-      name: '2023年秋季马拉松挑战赛',
-      location: '城市环路',
-      description: '城市环城马拉松比赛，全程42.195公里',
-      eventDate: '2023-10-20',
-      registrationDeadline: new Date(new Date().getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      maxParticipants: 1000,
-      registeredCount: 578,
-      featured: true,
-      categories: ['马拉松'],
-      status: 'UPCOMING'
-    },
-    {
-      id: 3,
-      name: '2023年暑期篮球联赛',
-      location: '市体育馆',
-      description: '暑期篮球爱好者联赛，分团体和个人组',
-      eventDate: '2023-07-10',
-      registrationDeadline: '2023-06-30',
-      maxParticipants: 200,
-      registeredCount: 185,
-      featured: false,
-      categories: ['球类'],
-      status: 'COMPLETED'
-    },
-    {
-      id: 4,
-      name: '2023年游泳挑战赛',
-      location: '奥林匹克游泳馆',
-      description: '各年龄段游泳爱好者的竞技平台',
-      eventDate: '2023-08-05',
-      registrationDeadline: '2023-07-25',
-      maxParticipants: 300,
-      registeredCount: 210,
-      featured: false,
-      categories: ['游泳'],
-      status: 'COMPLETED'
-    },
-    {
-      id: 5,
-      name: '2023年冬季滑雪节',
-      location: '雪山度假村',
-      description: '冬季户外运动盛事，包含多种雪上项目',
-      eventDate: '2023-12-15',
-      registrationDeadline: '2023-12-01',
-      maxParticipants: 400,
-      registeredCount: 150,
-      featured: true,
-      categories: ['冬季运动'],
-      status: 'UPCOMING'
-    },
-    {
-      id: 6,
-      name: '2023年城市定向越野赛',
-      location: '城市中心',
-      description: '融合智力与体力的城市探索活动',
-      eventDate: '2023-09-10',
-      registrationDeadline: '2023-08-30',
-      maxParticipants: 250,
-      registeredCount: 230,
-      featured: false,
-      categories: ['田径', '极限运动'],
-      status: 'COMPLETED'
-    }
-  ]
+  .filter-container > * {
+    width: 100%;
+    margin-bottom: 10px;
+  }
   
-  totalEvents.value = events.value.length
-  loading.value = false
-})
-</script> 
+  .el-date-picker {
+    width: 100%;
+  }
+}
+
+/* 图片占位符 */
+.image-placeholder {
+  background-image: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-400) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+/* 截断长文本 */
+.event-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-location {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style> 

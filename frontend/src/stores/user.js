@@ -1,96 +1,139 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { useAppStore } from './app'
+import authApi from '@/api/modules/auth'
 
 export const useUserStore = defineStore('user', () => {
-  // 状态
+  const appStore = useAppStore()
+  
+  // 用户状态
   const token = ref(localStorage.getItem('token') || '')
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const user = ref(null)
   
-  // getter
+  // 计算属性
   const isLoggedIn = computed(() => !!token.value)
-  const role = computed(() => user.value?.role || '')
-  const userId = computed(() => user.value?.id || null)
-  const username = computed(() => user.value?.username || '')
+  const isAdmin = computed(() => user.value?.role === 'ADMIN')
   
-  // actions
+  // 设置认证令牌
   function setToken(newToken) {
     token.value = newToken
     localStorage.setItem('token', newToken)
-    // 设置axios全局请求头
+    
+    // 设置 axios 默认头
     axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
   }
   
-  function setUser(userData) {
-    user.value = userData
-    localStorage.setItem('user', JSON.stringify(userData))
-  }
-  
-  function clearAuth() {
+  // 移除认证令牌
+  function removeToken() {
     token.value = ''
-    user.value = null
     localStorage.removeItem('token')
-    localStorage.removeItem('user')
     delete axios.defaults.headers.common['Authorization']
   }
   
+  // 设置用户信息
+  function setUser(userData) {
+    user.value = userData
+  }
+  
+  // 加载用户信息
+  async function loadUser() {
+    try {
+      if (token.value) {
+        const response = await axios.get('/user/profile')
+        setUser(response.data)
+      }
+    } catch (error) {
+      console.error('加载用户信息失败:', error)
+      logout()
+    }
+  }
+  
+  // 用户登录
   async function login(credentials) {
     try {
-      const response = await axios.post('/api/auth/login', credentials)
-      const { data } = response.data
+      const response = await authApi.login(credentials)
+      const { token: newToken, user: userData } = response
       
-      setToken(data.token)
-      setUser({
-        id: data.id,
-        username: data.username,
-        email: data.email,
-        role: data.role
-      })
+      setToken(newToken)
+      setUser(userData)
       
-      return Promise.resolve(data)
+      return true
     } catch (error) {
-      return Promise.reject(error.response?.data?.message || '登录失败')
+      const message = error.response?.data?.message || '登录失败，请检查用户名和密码'
+      appStore.showError(message)
+      return false
     }
   }
   
-  async function register(userData) {
+  // 用户注册
+  async function register(userInfo) {
     try {
-      const response = await axios.post('/api/auth/register', userData)
-      const { data } = response.data
+      const response = await authApi.register(userInfo)
+      const { token: newToken, user: userData } = response
       
-      setToken(data.token)
-      setUser({
-        id: data.id,
-        username: data.username,
-        email: data.email,
-        role: data.role
-      })
+      setToken(newToken)
+      setUser(userData)
       
-      return Promise.resolve(data)
+      return true
     } catch (error) {
-      return Promise.reject(error.response?.data?.message || '注册失败')
+      const message = error.response?.data?.message || '注册失败，请稍后重试'
+      appStore.showError(message)
+      return false
     }
   }
   
-  function logout() {
-    clearAuth()
+  // 用户登出
+  async function logout() {
+    try {
+      if (token.value) {
+        await authApi.logout()
+      }
+    } catch (error) {
+      console.error('登出时发生错误:', error)
+    } finally {
+      removeToken()
+      setUser(null)
+    }
   }
   
-  // 初始化时设置axios全局请求头
-  if (token.value) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+  // 更新用户信息
+  async function updateProfile(profileData) {
+    try {
+      const response = await axios.put('/user/profile', profileData)
+      setUser(response.data)
+      appStore.showError('个人资料更新成功', 'success')
+      return true
+    } catch (error) {
+      const message = error.response?.data?.message || '更新个人资料失败'
+      appStore.showError(message)
+      return false
+    }
+  }
+  
+  // 更改密码
+  async function changePassword(passwordData) {
+    try {
+      await axios.put('/user/change-password', passwordData)
+      appStore.showError('密码修改成功', 'success')
+      return true
+    } catch (error) {
+      const message = error.response?.data?.message || '密码修改失败'
+      appStore.showError(message)
+      return false
+    }
   }
   
   return {
     token,
     user,
     isLoggedIn,
-    role,
-    userId,
-    username,
+    isAdmin,
     login,
     register,
     logout,
-    setUser
+    loadUser,
+    updateProfile,
+    changePassword
   }
 }) 

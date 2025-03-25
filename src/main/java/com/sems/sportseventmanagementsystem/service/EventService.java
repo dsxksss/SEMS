@@ -63,4 +63,6 @@ public interface EventService {
      * @return 即将开始的赛事列表
      */
     List<Event> getUpcomingEvents(int days);
+
+    List<Event> getLatestEvents(int limit);
 } 

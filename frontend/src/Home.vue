@@ -37,4 +37,79 @@ const banners = ref([
     image: 'https://picsum.photos/1200/400?random=3',
     link: '/events/3'
   }
-]) 
+])
+
+<style scoped>
+.card {
+  @apply bg-white p-6 rounded-lg shadow-sm;
+}
+
+/* 动画类定义 */
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.home-page {
+  overflow-x: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn {
+  @apply inline-flex items-center px-6 py-3 rounded-lg font-medium transition-colors duration-200;
+}
+
+.btn-primary {
+  @apply btn bg-primary-600 text-white hover:bg-primary-700;
+}
+
+.announcement-dialog :deep(.el-dialog__title) {
+  @apply text-xl font-bold text-gray-900;
+}
+
+.announcement-dialog :deep(.el-dialog__header) {
+  @apply pb-0 border-b border-gray-200;
+}
+</style> 

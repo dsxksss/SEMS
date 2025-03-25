@@ -1,0 +1,38 @@
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景图形 -->
+  <circle cx="400" cy="300" r="250" fill="#E0EDFF" />
+  
+  <!-- 奖杯 -->
+  <path d="M400 150C420 150 440 150 460 150C460 160 460 170 460 180C460 220 440 260 400 280C360 260 340 220 340 180C340 170 340 160 340 150C360 150 380 150 400 150Z" fill="#FFD700" stroke="#FFB700" stroke-width="5" />
+  
+  <!-- 奖杯把手 -->
+  <path d="M460 150C480 150 500 160 510 180C520 200 510 230 490 240C480 220 470 200 460 180C460 170 460 160 460 150Z" fill="#FFD700" stroke="#FFB700" stroke-width="5" />
+  <path d="M340 150C320 150 300 160 290 180C280 200 290 230 310 240C320 220 330 200 340 180C340 170 340 160 340 150Z" fill="#FFD700" stroke="#FFB700" stroke-width="5" />
+  
+  <!-- 奖杯底座 -->
+  <rect x="350" y="280" width="100" height="20" fill="#FFD700" stroke="#FFB700" stroke-width="5" />
+  <rect x="370" y="300" width="60" height="30" fill="#FFD700" stroke="#FFB700" stroke-width="5" />
+  
+  <!-- 运动员 1 -->
+  <circle cx="250" cy="360" r="40" fill="#1A6BF5" />
+  <rect x="240" y="400" width="20" height="80" fill="#1A6BF5" />
+  <rect x="220" y="420" width="20" height="60" fill="#1A6BF5" transform="rotate(30 220 420)" />
+  <rect x="260" y="420" width="20" height="60" fill="#1A6BF5" transform="rotate(-30 260 420)" />
+  <rect x="235" y="480" width="15" height="60" fill="#1A6BF5" />
+  <rect x="250" y="480" width="15" height="60" fill="#1A6BF5" />
+  
+  <!-- 运动员 2 -->
+  <circle cx="550" cy="360" r="40" fill="#1A6BF5" />
+  <rect x="540" y="400" width="20" height="80" fill="#1A6BF5" />
+  <rect x="520" y="420" width="20" height="60" fill="#1A6BF5" transform="rotate(30 520 420)" />
+  <rect x="560" y="420" width="20" height="60" fill="#1A6BF5" transform="rotate(-30 560 420)" />
+  <rect x="535" y="480" width="15" height="60" fill="#1A6BF5" />
+  <rect x="550" y="480" width="15" height="60" fill="#1A6BF5" />
+  
+  <!-- 运动球 -->
+  <circle cx="400" cy="450" r="50" fill="#FFFFFF" stroke="#1A6BF5" stroke-width="5" />
+  <path d="M360 430 L440 470" stroke="#1A6BF5" stroke-width="3" />
+  <path d="M440 430 L360 470" stroke="#1A6BF5" stroke-width="3" />
+  <path d="M400 400 L400 500" stroke="#1A6BF5" stroke-width="3" />
+  <path d="M350 450 L450 450" stroke="#1A6BF5" stroke-width="3" />
+</svg> 

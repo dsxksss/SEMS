@@ -1,116 +1,140 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
+import { announcementApi } from '@/api'
+import { useAppStore } from './app'
 
 export const useAnnouncementStore = defineStore('announcement', () => {
-  // 状态
+  const appStore = useAppStore()
+  
+  // 公告列表
   const announcements = ref([])
-  const currentAnnouncement = ref(null)
-  const isLoading = ref(false)
-  const error = ref(null)
   
-  // actions
-  async function fetchAllAnnouncements() {
-    isLoading.value = true
-    error.value = null
-    
-    try {
-      console.log('正在获取公告数据...');
-      const response = await axios.get('/api/announcements');
-      console.log('获取公告数据成功:', response.data);
-      announcements.value = response.data.data || [];
-    } catch (err) {
-      console.error('获取公告数据失败:', err);
-      error.value = err.response?.data?.message || '获取公告列表失败';
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  // 当前页码等分页信息
+  const pagination = ref({
+    page: 1,
+    size: 10,
+    total: 0
+  })
   
-  async function fetchAnnouncementById(id) {
-    isLoading.value = true
-    error.value = null
-    
-    try {
-      const response = await axios.get(`/api/announcements/${id}`)
-      currentAnnouncement.value = response.data.data
-    } catch (err) {
-      error.value = err.response?.data?.message || '获取公告详情失败'
-    } finally {
-      isLoading.value = false
-    }
-  }
+  // 加载状态
+  const loading = ref(false)
   
-  async function createAnnouncement(announcementData) {
-    isLoading.value = true
-    error.value = null
-    
+  // 获取公告列表
+  const fetchAnnouncements = async (params = {}) => {
     try {
-      const response = await axios.post('/api/announcements', announcementData)
-      return response.data.data
-    } catch (err) {
-      error.value = err.response?.data?.message || '创建公告失败'
-      throw error.value
-    } finally {
-      isLoading.value = false
-    }
-  }
-  
-  async function updateAnnouncement(id, announcementData) {
-    isLoading.value = true
-    error.value = null
-    
-    try {
-      const response = await axios.put(`/api/announcements/${id}`, announcementData)
+      loading.value = true
+      const { page = 1, size = 10, keyword } = params
       
-      if (currentAnnouncement.value && currentAnnouncement.value.id === id) {
-        currentAnnouncement.value = response.data.data
+      const result = await announcementApi.getAnnouncementList({
+        page,
+        size,
+        keyword
+      })
+      
+      announcements.value = result.data || []
+      pagination.value = {
+        page: params.page || page,
+        size: params.size || size,
+        total: result.total || 0
       }
       
-      const index = announcements.value.findIndex(a => a.id === id)
-      if (index !== -1) {
-        announcements.value[index] = response.data.data
-      }
-      
-      return response.data.data
-    } catch (err) {
-      error.value = err.response?.data?.message || '更新公告失败'
-      throw error.value
+      return result
+    } catch (error) {
+      console.error('获取公告列表失败:', error)
+      appStore.showError('获取公告列表失败，请稍后重试')
+      return null
     } finally {
-      isLoading.value = false
+      loading.value = false
     }
   }
   
-  async function deleteAnnouncement(id) {
-    isLoading.value = true
-    error.value = null
-    
+  // 获取最新公告
+  const fetchLatestAnnouncements = async (limit = 4) => {
     try {
-      await axios.delete(`/api/announcements/${id}`)
-      
-      if (currentAnnouncement.value && currentAnnouncement.value.id === id) {
-        currentAnnouncement.value = null
-      }
-      
-      announcements.value = announcements.value.filter(a => a.id !== id)
+      loading.value = true
+      const result = await announcementApi.getLatestAnnouncements(limit)
+      return result.data || []
+    } catch (error) {
+      console.error('获取最新公告失败:', error)
+      appStore.showError('获取最新公告失败，请稍后重试')
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 获取公告详情
+  const fetchAnnouncementDetail = async (id) => {
+    try {
+      loading.value = true
+      const result = await announcementApi.getAnnouncementDetail(id)
+      return result.data
+    } catch (error) {
+      console.error('获取公告详情失败:', error)
+      appStore.showError('获取公告详情失败，请稍后重试')
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 创建公告
+  const createAnnouncement = async (data) => {
+    try {
+      loading.value = true
+      const result = await announcementApi.createAnnouncement(data)
+      appStore.showSuccess('创建公告成功')
+      return result.data
+    } catch (error) {
+      console.error('创建公告失败:', error)
+      appStore.showError('创建公告失败，请稍后重试')
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 更新公告
+  const updateAnnouncement = async (id, data) => {
+    try {
+      loading.value = true
+      const result = await announcementApi.updateAnnouncement(id, data)
+      appStore.showSuccess('更新公告成功')
+      return result.data
+    } catch (error) {
+      console.error('更新公告失败:', error)
+      appStore.showError('更新公告失败，请稍后重试')
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 删除公告
+  const deleteAnnouncement = async (id) => {
+    try {
+      loading.value = true
+      await announcementApi.deleteAnnouncement(id)
+      appStore.showSuccess('删除公告成功')
       return true
-    } catch (err) {
-      error.value = err.response?.data?.message || '删除公告失败'
-      throw error.value
+    } catch (error) {
+      console.error('删除公告失败:', error)
+      appStore.showError('删除公告失败，请稍后重试')
+      return false
     } finally {
-      isLoading.value = false
+      loading.value = false
     }
   }
   
   return {
     announcements,
-    currentAnnouncement,
-    isLoading,
-    error,
-    fetchAllAnnouncements,
-    fetchAnnouncementById,
+    pagination,
+    loading,
+    fetchAnnouncements,
+    fetchLatestAnnouncements,
+    fetchAnnouncementDetail,
     createAnnouncement,
     updateAnnouncement,
     deleteAnnouncement
   }
-}) 
+})

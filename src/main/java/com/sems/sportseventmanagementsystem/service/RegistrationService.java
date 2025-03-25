@@ -59,4 +59,11 @@ public interface RegistrationService {
      * @return 报名记录列表
      */
     List<Registration> getRegistrationsByStatus(String status);
+    
+    /**
+     * 导出报名数据
+     * @param eventId 赛事ID
+     * @return 报名数据字节数组
+     */
+    byte[] exportRegistrations(Long eventId);
 } 

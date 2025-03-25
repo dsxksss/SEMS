@@ -13,6 +13,8 @@ public interface AnnouncementService {
     
     List<Announcement> getLatestAnnouncements();
     
+    List<Announcement> getLatestAnnouncements(int limit);
+    
     Announcement getAnnouncementById(Long id);
     
     Announcement createAnnouncement(Announcement announcement);

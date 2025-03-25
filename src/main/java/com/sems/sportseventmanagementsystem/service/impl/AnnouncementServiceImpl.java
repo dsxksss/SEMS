@@ -6,6 +6,8 @@ import com.sems.sportseventmanagementsystem.service.AnnouncementService;
 import com.sems.sportseventmanagementsystem.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +35,13 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
     @Override
     public List<Announcement> getLatestAnnouncements() {
-        return announcementRepository.findTop5ByStatusOrderByCreateTimeDesc(1);
+        return getLatestAnnouncements(5); // 默认返回5条最新公告
+    }
+
+    @Override
+    public List<Announcement> getLatestAnnouncements(int limit) {
+        PageRequest pageRequest = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createTime"));
+        return announcementRepository.findByStatus(1, pageRequest).getContent();
     }
 
     @Override

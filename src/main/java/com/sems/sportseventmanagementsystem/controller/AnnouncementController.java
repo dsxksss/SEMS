@@ -4,13 +4,13 @@ import com.sems.sportseventmanagementsystem.model.entity.Announcement;
 import com.sems.sportseventmanagementsystem.service.AnnouncementService;
 import com.sems.sportseventmanagementsystem.common.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/announcements")
-@CrossOrigin(origins = "*", allowCredentials = "false", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
+@RequestMapping("/announcements")
 public class AnnouncementController {
 
     @Autowired
@@ -32,8 +32,9 @@ public class AnnouncementController {
     }
 
     @GetMapping("/latest")
-    public Result<List<Announcement>> getLatestAnnouncements() {
-        return Result.success(announcementService.getLatestAnnouncements());
+    public Result<List<Announcement>> getLatestAnnouncements(
+            @RequestParam(defaultValue = "5") int limit) {
+        return Result.success(announcementService.getLatestAnnouncements(limit));
     }
 
     @GetMapping("/{id}")
@@ -42,17 +43,20 @@ public class AnnouncementController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<Announcement> createAnnouncement(@RequestBody Announcement announcement) {
         return Result.success(announcementService.createAnnouncement(announcement));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<Announcement> updateAnnouncement(@PathVariable Long id, @RequestBody Announcement announcement) {
         announcement.setId(id);
         return Result.success(announcementService.updateAnnouncement(announcement));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> deleteAnnouncement(@PathVariable Long id) {
         announcementService.deleteAnnouncement(id);
         return Result.success();

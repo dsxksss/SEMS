@@ -8,6 +8,7 @@ import com.sems.sportseventmanagementsystem.service.EventService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -108,5 +109,11 @@ public class EventServiceImpl implements EventService {
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end = start.plusDays(days);
         return eventRepository.findByTimeRange(start, end);
+    }
+
+    @Override
+    public List<Event> getLatestEvents(int limit) {
+        PageRequest pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "startTime"));
+        return eventRepository.findAll(pageable).getContent();
     }
 } 

@@ -66,23 +66,25 @@ public class JwtUtils {
      * @param authToken JWT令牌
      * @return 是否有效
      */
-    public boolean validateJwtToken(String authToken) {
+    public boolean validateToken(String authToken) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(authToken);
+            Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(authToken);
             return true;
         } catch (MalformedJwtException e) {
-            log.error("无效的JWT令牌: {}", e.getMessage());
+            log.error("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            log.error("JWT令牌已过期: {}", e.getMessage());
+            log.error("JWT token is expired: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            log.error("不支持的JWT令牌: {}", e.getMessage());
+            log.error("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.error("JWT令牌为空: {}", e.getMessage());
+            log.error("JWT claims string is empty: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("验证JWT令牌发生错误: {}", e.getMessage());
+            log.error("JWT validation error: {}", e.getMessage());
         }
-
         return false;
     }
 } 

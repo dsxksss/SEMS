@@ -6,7 +6,6 @@ import com.sems.sportseventmanagementsystem.model.entity.User;
 import com.sems.sportseventmanagementsystem.security.UserDetailsImpl;
 import com.sems.sportseventmanagementsystem.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;

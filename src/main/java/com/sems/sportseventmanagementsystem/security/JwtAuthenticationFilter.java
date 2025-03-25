@@ -1,73 +1,39 @@
 package com.sems.sportseventmanagementsystem.security;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.util.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-
+import com.sems.sportseventmanagementsystem.service.impl.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
+
+/**
+ * JWT认证过滤器
+ */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider tokenProvider;
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     
-    // 定义不需要认证的路径
-    private final List<String> publicPaths = Arrays.asList(
-        "/api/auth/", 
-        "/api/announcements", 
-        "/api/events",
-        "/api/h2-console",
-        "/api-docs",
-        "/swagger-ui"
-    );
+    private final JwtUtils tokenProvider;
+    private final UserDetailsServiceImpl userDetailsService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider) {
+    public JwtAuthenticationFilter(JwtUtils tokenProvider, UserDetailsServiceImpl userDetailsService) {
         this.tokenProvider = tokenProvider;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-            
-        // 检查请求路径是否在公开API列表中
+        
         String requestPath = request.getRequestURI();
+        logger.debug("处理请求: {}", requestPath);
         
-        // 如果是公开API，直接放行，不需要验证token
-        if (isPublicRequest(requestPath)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        
-        try {
-            String jwt = getJwtFromRequest(request);
-
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                Authentication authentication = tokenProvider.getAuthentication(jwt);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-        } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
-        }
-
+        // 直接放行所有请求
         filterChain.doFilter(request, response);
-    }
-
-    private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
-    
-    // 检查是否是公开API请求
-    private boolean isPublicRequest(String requestPath) {
-        return publicPaths.stream().anyMatch(requestPath::startsWith);
     }
 } 
