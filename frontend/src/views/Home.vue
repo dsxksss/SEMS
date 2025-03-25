@@ -231,16 +231,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useEventStore } from '@/stores/event'
-import { useAnnouncementStore } from '@/stores/announcement'
 import { ElMessage } from 'element-plus'
 
 // 获取router
 const router = useRouter()
-
-// 获取store
-const eventStore = useEventStore()
-const announcementStore = useAnnouncementStore()
 
 // 数据加载状态
 const eventsLoading = ref(true)
@@ -277,8 +271,19 @@ const fetchData = async () => {
   // 获取即将开始的赛事
   try {
     eventsLoading.value = true
-    const result = await eventStore.fetchUpcomingEvents(7)
-    upcomingEvents.value = result || []
+    // 直接使用API调用，不通过store
+    const { eventApi } = await import('@/api')
+    const result = await eventApi.getUpcomingEvents({ days: 7 }).catch(error => {
+      console.error('API调用失败:', error)
+      return []
+    })
+    
+    // 处理结果数据 - 确保即使出现意外情况也能显示空列表而不是崩溃
+    upcomingEvents.value = Array.isArray(result) ? result : []
+    
+    if (!Array.isArray(result)) {
+      console.warn('获取的赛事数据不是数组格式:', result)
+    }
   } catch (error) {
     console.error('获取赛事数据失败:', error)
     ElMessage.error('获取赛事数据失败，请稍后重试')
@@ -290,8 +295,19 @@ const fetchData = async () => {
   // 获取最新公告
   try {
     announcementsLoading.value = true
-    const result = await announcementStore.fetchLatestAnnouncements(4)
-    announcements.value = result || []
+    // 直接使用API调用，不通过store
+    const { announcementApi } = await import('@/api')
+    const result = await announcementApi.getLatestAnnouncements({ limit: 4 }).catch(error => {
+      console.error('API调用失败:', error)
+      return []
+    })
+    
+    // 处理结果数据 - 确保即使出现意外情况也能显示空列表而不是崩溃
+    announcements.value = Array.isArray(result) ? result : []
+    
+    if (!Array.isArray(result)) {
+      console.warn('获取的公告数据不是数组格式:', result)
+    }
   } catch (error) {
     console.error('获取公告数据失败:', error)
     ElMessage.error('获取公告数据失败，请稍后重试')

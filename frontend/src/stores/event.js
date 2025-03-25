@@ -54,8 +54,14 @@ export const useEventStore = defineStore('event', () => {
   const fetchUpcomingEvents = async (days = 7) => {
     try {
       loading.value = true
-      const result = await eventApi.getUpcomingEvents(days)
-      return result.data || []
+      const result = await eventApi.getUpcomingEvents({ days })
+      // 检查结果格式
+      if (result && result.data) {
+        return result.data
+      } else if (Array.isArray(result)) {
+        return result
+      }
+      return result || []
     } catch (error) {
       console.error('获取即将开始的赛事失败:', error)
       appStore.showError('获取即将开始的赛事失败，请稍后重试')

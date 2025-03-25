@@ -15,7 +15,7 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
-// 设置 API 基础 URL - 使用固定的/api路径
+// 设置 API 基础 URL - 使用统一的/api前缀
 axios.defaults.baseURL = '/api'
 
 // 在应用挂载前初始化用户状态

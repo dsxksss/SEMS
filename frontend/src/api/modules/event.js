@@ -124,15 +124,52 @@ const eventApi = {
   },
   
   /**
-   * 获取即将开始的赛事
-   * @param {number} days - 未来天数
-   * @returns {Promise} - 返回即将开始的赛事列表
+   * 获取即将到来的活动
+   * @param {Object} params - 查询参数
+   * @param {number} params.days - 未来几天内的活动
+   * @returns {Promise} - 返回活动列表
    */
-  getUpcomingEvents(days = 7) {
+  getUpcomingEvents(params) {
     return request({
-      url: '/events/upcoming',
+      url: '/api/events/upcoming',
       method: 'get',
-      params: { days }
+      params,
+      catchError: true,
+      transformResponse: [
+        data => {
+          try {
+            if (!data || data.trim() === '') {
+              console.warn('服务器返回了空响应')
+              return []
+            }
+            
+            const parsed = JSON.parse(data)
+            
+            if (parsed.code !== undefined) {
+              if (parsed.code === 200) {
+                return parsed.data || []
+              } else {
+                console.warn('服务器返回了错误代码:', parsed.code, parsed.message)
+                return []
+              }
+            }
+            
+            if (Array.isArray(parsed)) {
+              return parsed
+            }
+            
+            if (parsed && parsed.content && Array.isArray(parsed.content)) {
+              return parsed.content
+            }
+            
+            console.warn('未识别的响应格式:', parsed)
+            return parsed || []
+          } catch (error) {
+            console.error('解析响应数据失败:', error)
+            return []
+          }
+        }
+      ]
     })
   },
   

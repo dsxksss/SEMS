@@ -1,85 +1,123 @@
 import request from '../request'
 
-export default {
-  // 获取当前用户信息
-  getProfile() {
+/**
+ * 用户相关API
+ */
+const userApi = {
+  /**
+   * 获取用户列表
+   * @param {Object} params - 查询参数
+   * @returns {Promise} - 返回用户列表
+   */
+  getUserList(params) {
     return request({
-      url: '/users/me',
+      url: '/user/list',
+      method: 'get',
+      params
+    })
+  },
+
+  /**
+   * 获取用户详情
+   * @param {number} id - 用户ID
+   * @returns {Promise} - 返回用户详情
+   */
+  getUserDetail(id) {
+    return request({
+      url: `/user/${id}`,
       method: 'get'
     })
   },
 
-  // 获取指定用户信息（管理员）
-  getById(id) {
+  /**
+   * 添加用户
+   * @param {Object} data - 用户信息
+   * @returns {Promise} - 返回添加结果
+   */
+  addUser(data) {
     return request({
-      url: `/users/${id}`,
-      method: 'get'
-    })
-  },
-
-  // 获取所有用户（管理员）
-  getAll() {
-    return request({
-      url: '/users',
-      method: 'get'
-    })
-  },
-
-  // 创建用户（管理员）
-  create(data) {
-    return request({
-      url: '/users',
+      url: '/user/add',
       method: 'post',
       data
     })
   },
 
-  // 更新当前用户信息
-  updateProfile(data) {
+  /**
+   * 更新用户信息
+   * @param {number} id - 用户ID
+   * @param {Object} data - 用户更新信息
+   * @returns {Promise} - 返回更新结果
+   */
+  updateUser(id, data) {
     return request({
-      url: '/users/me',
-      method: 'put',
-      data,
-      loadingMessage: '更新信息中...'
-    })
-  },
-
-  // 更新指定用户信息（管理员）
-  update(id, data) {
-    return request({
-      url: `/users/${id}`,
+      url: `/user/${id}`,
       method: 'put',
       data
     })
   },
 
-  // 删除用户（管理员）
-  delete(id) {
+  /**
+   * 删除用户
+   * @param {number} id - 用户ID
+   * @returns {Promise} - 返回删除结果
+   */
+  deleteUser(id) {
     return request({
-      url: `/users/${id}`,
+      url: `/user/${id}`,
       method: 'delete'
     })
   },
 
-  // 修改当前用户密码
-  changePassword(oldPassword, newPassword) {
+  /**
+   * 更新用户状态
+   * @param {number} id - 用户ID
+   * @param {Object} data - 包含状态的对象
+   * @returns {Promise} - 返回状态更新结果
+   */
+  updateUserStatus(id, data) {
     return request({
-      url: '/users/me/password',
+      url: `/user/${id}/status`,
       method: 'put',
-      data: {
-        oldPassword,
-        newPassword
-      },
-      loadingMessage: '修改密码中...'
+      data
     })
   },
 
-  // 修改用户状态（管理员）
-  updateStatus(id, status) {
+  /**
+   * 更新个人资料
+   * @param {Object} data - 个人资料信息
+   * @returns {Promise} - 返回更新结果
+   */
+  updateProfile(data) {
     return request({
-      url: `/users/${id}/status`,
+      url: '/user/profile',
       method: 'put',
-      params: { status }
+      data
+    })
+  },
+
+  /**
+   * 更新密码
+   * @param {Object} data - 密码信息
+   * @returns {Promise} - 返回更新结果
+   */
+  updatePassword(data) {
+    return request({
+      url: '/user/password',
+      method: 'put',
+      data
+    })
+  },
+
+  /**
+   * 获取当前用户信息
+   * @returns {Promise} - 返回当前用户信息
+   */
+  getCurrentUser() {
+    return request({
+      url: '/user/current',
+      method: 'get'
     })
   }
-} 
+}
+
+export default userApi 

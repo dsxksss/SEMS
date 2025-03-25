@@ -52,8 +52,14 @@ export const useAnnouncementStore = defineStore('announcement', () => {
   const fetchLatestAnnouncements = async (limit = 4) => {
     try {
       loading.value = true
-      const result = await announcementApi.getLatestAnnouncements(limit)
-      return result.data || []
+      const result = await announcementApi.getLatestAnnouncements({ limit })
+      // 检查结果格式
+      if (result && result.data) {
+        return result.data
+      } else if (Array.isArray(result)) {
+        return result
+      }
+      return result || []
     } catch (error) {
       console.error('获取最新公告失败:', error)
       appStore.showError('获取最新公告失败，请稍后重试')

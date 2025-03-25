@@ -73,14 +73,51 @@ const announcementApi = {
 
   /**
    * 获取最新公告
-   * @param {number} limit - 获取数量
-   * @returns {Promise} - 返回最新公告列表
+   * @param {Object} params - 查询参数
+   * @param {number} params.limit - 获取条数
+   * @returns {Promise} - 返回公告列表
    */
-  getLatestAnnouncements(limit = 5) {
+  getLatestAnnouncements(params) {
     return request({
-      url: '/announcements/latest',
+      url: '/api/announcements/latest',
       method: 'get',
-      params: { limit }
+      params,
+      catchError: true,
+      transformResponse: [
+        data => {
+          try {
+            if (!data || data.trim() === '') {
+              console.warn('服务器返回了空响应')
+              return []
+            }
+            
+            const parsed = JSON.parse(data)
+            
+            if (parsed.code !== undefined) {
+              if (parsed.code === 200) {
+                return parsed.data || []
+              } else {
+                console.warn('服务器返回了错误代码:', parsed.code, parsed.message)
+                return []
+              }
+            }
+            
+            if (Array.isArray(parsed)) {
+              return parsed
+            }
+            
+            if (parsed && parsed.content && Array.isArray(parsed.content)) {
+              return parsed.content
+            }
+            
+            console.warn('未识别的响应格式:', parsed)
+            return parsed || []
+          } catch (error) {
+            console.error('解析响应数据失败:', error)
+            return []
+          }
+        }
+      ]
     })
   },
   

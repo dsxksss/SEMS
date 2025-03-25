@@ -1,101 +1,127 @@
 import request from '../request'
 
-export default {
-  // 提交报名
-  register(data) {
+/**
+ * 报名相关API
+ */
+const registrationApi = {
+  /**
+   * 获取报名列表
+   * @param {Object} params - 查询参数
+   * @returns {Promise} - 返回报名列表
+   */
+  getRegistrationList(params) {
     return request({
-      url: '/registrations',
-      method: 'post',
-      data,
-      loadingMessage: '提交报名中...'
-    })
-  },
-
-  // 获取报名列表
-  getList(params) {
-    return request({
-      url: '/registrations',
+      url: '/registration/list',
       method: 'get',
       params
     })
   },
 
-  // 获取报名详情
-  getById(id) {
+  /**
+   * 获取报名详情
+   * @param {number} id - 报名ID
+   * @returns {Promise} - 返回报名详情
+   */
+  getRegistrationDetail(id) {
     return request({
-      url: `/registrations/${id}`,
-      method: 'get',
-      loadingMessage: '加载报名详情...'
+      url: `/registration/${id}`,
+      method: 'get'
     })
   },
 
-  // 更新报名状态
-  updateStatus(id, status) {
+  /**
+   * 获取赛事报名列表
+   * @param {number} eventId - 赛事ID
+   * @param {Object} params - 查询参数
+   * @returns {Promise} - 返回报名列表
+   */
+  getEventRegistrations(eventId, params) {
     return request({
-      url: `/registrations/${id}/status`,
+      url: `/registration/event/${eventId}`,
+      method: 'get',
+      params
+    })
+  },
+
+  /**
+   * 获取用户报名列表
+   * @param {number} userId - 用户ID，不传则获取当前用户
+   * @param {Object} params - 查询参数
+   * @returns {Promise} - 返回报名列表
+   */
+  getUserRegistrations(userId, params) {
+    const url = userId ? `/registration/user/${userId}` : '/registration/my'
+    return request({
+      url,
+      method: 'get',
+      params
+    })
+  },
+
+  /**
+   * 创建报名
+   * @param {Object} data - 报名信息
+   * @returns {Promise} - 返回创建结果
+   */
+  createRegistration(data) {
+    return request({
+      url: '/registration',
+      method: 'post',
+      data
+    })
+  },
+
+  /**
+   * 更新报名
+   * @param {number} id - 报名ID
+   * @param {Object} data - 报名更新信息
+   * @returns {Promise} - 返回更新结果
+   */
+  updateRegistration(id, data) {
+    return request({
+      url: `/registration/${id}`,
       method: 'put',
-      data: { status }
+      data
     })
   },
 
-  // 获取用户的报名历史
-  getUserRegistrations() {
+  /**
+   * 取消报名
+   * @param {number} id - 报名ID
+   * @returns {Promise} - 返回取消结果
+   */
+  cancelRegistration(id) {
     return request({
-      url: '/registrations/user',
-      method: 'get'
+      url: `/registration/${id}/cancel`,
+      method: 'put'
     })
   },
 
-  // 取消报名
-  cancel(id) {
+  /**
+   * 审核报名
+   * @param {number} id - 报名ID
+   * @param {Object} data - 审核信息
+   * @returns {Promise} - 返回审核结果
+   */
+  reviewRegistration(id, data) {
     return request({
-      url: `/registrations/${id}`,
-      method: 'delete',
-      loadingMessage: '取消报名中...'
-    })
-  },
-
-  // 管理员审核报名
-  review(id, status, remark) {
-    return request({
-      url: `/registrations/${id}/review`,
+      url: `/registration/${id}/review`,
       method: 'put',
-      params: { status, remark },
-      loadingMessage: '审核报名中...'
+      data
     })
   },
 
-  // 获取当前用户的报名记录
-  getMyRegistrations() {
+  /**
+   * 删除报名
+   * @param {number} id - 报名ID
+   * @returns {Promise} - 返回删除结果
+   */
+  deleteRegistration(id) {
     return request({
-      url: '/registrations/my',
-      method: 'get',
-      loadingMessage: '加载报名历史...'
-    })
-  },
-
-  // 获取指定赛事的所有报名记录（管理员）
-  getEventRegistrations(eventId) {
-    return request({
-      url: `/registrations/event/${eventId}`,
-      method: 'get'
-    })
-  },
-
-  // 根据状态筛选报名记录（管理员）
-  getByStatus(status) {
-    return request({
-      url: `/registrations/status/${status}`,
-      method: 'get'
-    })
-  },
-
-  // 导出报名数据
-  exportRegistrations(eventId) {
-    return request({
-      url: `/registrations/export/${eventId}`,
-      method: 'get',
-      responseType: 'blob'
+      url: `/registration/${id}`,
+      method: 'delete'
     })
   }
 }
+
+export default registrationApi

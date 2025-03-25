@@ -48,13 +48,14 @@ const routes = [
   },
   {
     path: '/admin',
-    name: 'Admin',
     component: () => import('@/views/admin/Dashboard.vue'),
     meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: '',
-        redirect: { name: 'AdminDashboard' }
+        name: 'Admin',
+        component: () => import('@/views/admin/Dashboard.vue'),
+        meta: { title: '管理控制台' }
       },
       {
         path: 'dashboard',
