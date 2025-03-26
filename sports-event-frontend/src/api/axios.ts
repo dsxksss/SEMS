@@ -14,10 +14,14 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log(`请求: ${config.method?.toUpperCase()} ${config.url}，已添加Token`);
+    } else {
+      console.log(`请求: ${config.method?.toUpperCase()} ${config.url}，无Token`);
     }
     return config;
   },
   (error) => {
+    console.error('请求拦截器错误:', error);
     return Promise.reject(error);
   }
 );
@@ -25,6 +29,7 @@ apiClient.interceptors.request.use(
 // 响应拦截器 - 处理统一错误
 apiClient.interceptors.response.use(
   (response) => {
+    console.log(`响应成功: ${response.config.method?.toUpperCase()} ${response.config.url}`);
     return response;
   },
   (error) => {
@@ -33,9 +38,17 @@ apiClient.interceptors.response.use(
       
       // 处理未授权错误
       if (status === 401) {
+        console.error('认证错误 (401):', error.response.data);
+        console.error('当前token:', localStorage.getItem('token'));
+        console.error('请求URL:', error.config.url);
+        console.error('请求方法:', error.config.method);
+        
+        // 保存当前URL作为重定向目标
+        const currentPath = window.location.pathname;
+        console.log('当前路径:', currentPath);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       }
       
       // 处理其他错误
