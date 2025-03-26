@@ -1,5 +1,5 @@
 import apiClient from './axios';
-import { PaginatedResponse } from './eventsAPI';
+import type { PaginatedResponse } from './eventsAPI';
 
 export interface Announcement {
   id: number;

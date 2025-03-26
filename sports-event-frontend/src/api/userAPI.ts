@@ -1,5 +1,5 @@
 import apiClient from './axios';
-import { User } from './authAPI';
+import type { User } from './authAPI';
 
 export const userAPI = {
   /**

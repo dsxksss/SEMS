@@ -1,11 +1,7 @@
 import { createPinia } from 'pinia';
-import { useAuthStore } from './auth';
-import { useEventStore } from './event';
 
-const pinia = createPinia();
+// 创建Pinia实例
+export const pinia = createPinia();
 
-export {
-  pinia,
-  useAuthStore,
-  useEventStore
-}; 
+// 导出所有存储模块
+export * from './auth'; 

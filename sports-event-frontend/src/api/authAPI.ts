@@ -32,7 +32,7 @@ export const authAPI = {
    * 用户登录
    */
   login: async (loginRequest: LoginRequest) => {
-    const response = await apiClient.post<AuthResponse>('/auth/signin', loginRequest);
+    const response = await apiClient.post<AuthResponse>('/api/auth/signin', loginRequest);
     return response.data;
   },
 
@@ -40,7 +40,7 @@ export const authAPI = {
    * 用户注册
    */
   register: async (signupRequest: SignupRequest) => {
-    const response = await apiClient.post('/auth/signup', signupRequest);
+    const response = await apiClient.post('/api/auth/signup', signupRequest);
     return response.data;
   },
 
