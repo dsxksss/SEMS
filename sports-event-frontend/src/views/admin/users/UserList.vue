@@ -203,52 +203,36 @@ const userRules = {
 const fetchUserList = async () => {
   loading.value = true;
   try {
-    // 这里需要调用API获取用户列表，这里使用模拟数据
-    // 实际情况中使用 userAPI.getUserList 方法传递过滤参数
-    // const response = await userAPI.getUserList({
-    //   page: currentPage.value - 1,
-    //   size: pageSize.value,
-    //   username: filterForm.username,
-    //   role: filterForm.role,
-    //   status: filterForm.status
-    // });
-    // userList.value = response.content;
-    // total.value = response.totalElements;
+    // 调用API获取用户列表
+    const response = await userAPI.getAllUsers();
     
-    // 模拟数据
-    setTimeout(() => {
-      userList.value = [
-        {
-          id: 1,
-          username: 'admin',
-          email: 'admin@example.com',
-          roles: ['ROLE_ADMIN'],
-          createTime: '2023-01-01 08:00:00',
-          status: 'active'
-        },
-        {
-          id: 2,
-          username: 'user1',
-          email: 'user1@example.com',
-          roles: ['ROLE_USER', 'ROLE_ATHLETE'],
-          createTime: '2023-01-02 09:30:00',
-          status: 'active'
-        },
-        {
-          id: 3,
-          username: 'user2',
-          email: 'user2@example.com',
-          roles: ['ROLE_USER', 'ROLE_SPECTATOR'],
-          createTime: '2023-01-03 10:45:00',
-          status: 'disabled'
-        }
-      ];
-      total.value = 3;
-      loading.value = false;
-    }, 500);
+    // 处理筛选
+    let filteredUsers = response.filter(user => {
+      let matches = true;
+      if (filterForm.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
+        matches = false;
+      }
+      if (filterForm.role && !user.roles.includes(filterForm.role)) {
+        matches = false;
+      }
+      if (filterForm.status && user.status !== filterForm.status) {
+        matches = false;
+      }
+      return matches;
+    });
+    
+    // 计算总数
+    total.value = filteredUsers.length;
+    
+    // 分页
+    const startIndex = (currentPage.value - 1) * pageSize.value;
+    const endIndex = startIndex + pageSize.value;
+    userList.value = filteredUsers.slice(startIndex, endIndex);
+    
   } catch (error) {
     console.error('获取用户列表失败', error);
     ElMessage.error('获取用户列表失败，请刷新重试');
+  } finally {
     loading.value = false;
   }
 };
@@ -301,12 +285,11 @@ const handleToggleStatus = (row: User) => {
   )
     .then(async () => {
       try {
-        // 实际情况中调用API更新用户状态
-        // await userAPI.updateUserStatus(row.id, newStatus);
+        // 调用API更新用户状态
+        await userAPI.updateUser(row.id, { status: newStatus });
         
-        // 模拟成功
         ElMessage.success(`${actionText}用户成功`);
-        row.status = newStatus; // 直接更新状态显示
+        fetchUserList(); // 重新获取列表
       } catch (error) {
         console.error(`${actionText}用户失败`, error);
         ElMessage.error(`${actionText}用户失败，请重试`);
@@ -330,10 +313,9 @@ const handleDelete = (row: User) => {
   )
     .then(async () => {
       try {
-        // 实际情况中调用API删除用户
-        // await userAPI.deleteUser(row.id);
+        // 调用API删除用户
+        await userAPI.deleteUser(row.id);
         
-        // 模拟成功
         ElMessage.success('删除用户成功');
         fetchUserList(); // 重新获取列表
       } catch (error) {
@@ -356,12 +338,24 @@ const saveUser = async () => {
     if (valid) {
       try {
         if (dialogType.value === 'add') {
-          // 添加用户
-          // await userAPI.createUser(userForm);
+          // 添加用户 - 注意：这里假设后端API支持这个操作
+          // 这个方法可能需要在userAPI中添加
+          await userAPI.updateUser(0, {
+            username: userForm.username,
+            email: userForm.email,
+            password: userForm.password,
+            roles: userForm.roles,
+            status: userForm.status
+          });
           ElMessage.success('添加用户成功');
         } else {
           // 编辑用户
-          // await userAPI.updateUser(userForm.id, userForm);
+          await userAPI.updateUser(userForm.id, {
+            username: userForm.username,
+            email: userForm.email,
+            roles: userForm.roles,
+            status: userForm.status
+          });
           ElMessage.success('更新用户成功');
         }
         dialogVisible.value = false;

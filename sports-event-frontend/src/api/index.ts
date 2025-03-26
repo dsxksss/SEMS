@@ -6,6 +6,7 @@ import registrationAPI from './registrationAPI';
 import resultAPI from './resultAPI';
 import announcementAPI from './announcementAPI';
 import userAPI from './userAPI';
+import roleAPI from './roleAPI';
 
 export {
   apiClient,
@@ -15,5 +16,6 @@ export {
   registrationAPI,
   resultAPI,
   announcementAPI,
-  userAPI
+  userAPI,
+  roleAPI
 }; 

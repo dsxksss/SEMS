@@ -1,7 +1,6 @@
 package com.sems.sportseventmanagementsystem.controller;
 
 import com.sems.sportseventmanagementsystem.entity.Event;
-import com.sems.sportseventmanagementsystem.entity.EventCategory;
 import com.sems.sportseventmanagementsystem.entity.EventStatus;
 import com.sems.sportseventmanagementsystem.entity.User;
 import com.sems.sportseventmanagementsystem.payload.response.MessageResponse;

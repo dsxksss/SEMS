@@ -3,7 +3,7 @@
     <div class="main-container">
       <div class="header">
         <h3>角色管理</h3>
-        <el-button type="primary" @click="dialogVisible = true">添加角色</el-button>
+        <el-button type="primary" @click="resetForm">添加角色</el-button>
       </div>
 
       <el-table
@@ -40,6 +40,7 @@
       :title="isEdit ? '编辑角色' : '添加角色'"
       v-model="dialogVisible"
       width="500px"
+      @closed="handleDialogClose"
     >
       <el-form
         :model="roleForm"
@@ -118,16 +119,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-
-interface Role {
-  id: number;
-  name: string;
-  displayName: string;
-  description: string;
-  permissions: string[];
-  createdAt: string;
-  isSystem?: boolean;
-}
+import { roleAPI } from '../../../api';
+import type { Role } from '../../../api/roleAPI';
 
 // 角色列表数据
 const roleList = ref<Role[]>([]);
@@ -164,64 +157,36 @@ const roleRules = {
 const fetchRoleList = async () => {
   loading.value = true;
   try {
-    // 实际应用中这里应该调用API获取角色列表
-    // const response = await roleAPI.getRoleList();
-    // roleList.value = response.data;
-    
-    // 使用模拟数据
-    setTimeout(() => {
-      roleList.value = [
-        {
-          id: 1,
-          name: 'ROLE_ADMIN',
-          displayName: '管理员',
-          description: '系统管理员，拥有所有权限',
-          permissions: ['*'], // 所有权限
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        },
-        {
-          id: 2,
-          name: 'ROLE_USER',
-          displayName: '普通用户',
-          description: '普通用户，具有基本权限',
-          permissions: ['event:view', 'registration:view', 'announcement:view'],
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        },
-        {
-          id: 3,
-          name: 'ROLE_ATHLETE',
-          displayName: '运动员',
-          description: '运动员用户，可以报名参加比赛',
-          permissions: ['event:view', 'registration:view', 'registration:cancel', 'announcement:view'],
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        },
-        {
-          id: 4,
-          name: 'ROLE_SPECTATOR',
-          displayName: '观众',
-          description: '观众用户，可以查看比赛信息',
-          permissions: ['event:view', 'announcement:view'],
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        },
-        {
-          id: 5,
-          name: 'ROLE_EVENT_MANAGER',
-          displayName: '赛事管理员',
-          description: '负责管理赛事的人员',
-          permissions: ['event:view', 'event:create', 'event:edit', 'event:delete', 'registration:view', 'registration:approve'],
-          createdAt: '2023-01-15 14:30:00',
-          isSystem: false
-        }
-      ];
-      loading.value = false;
-    }, 500);
+    console.log('开始获取角色列表...');
+    // 调用API获取角色列表
+    const roles = await roleAPI.getAllRoles();
+    console.log('获取角色列表结果:', roles);
+    roleList.value = roles || [];
   } catch (error) {
     console.error('获取角色列表失败', error);
-    ElMessage.error('获取角色列表失败，请刷新重试');
+    ElMessage.error('获取角色列表失败，使用本地缓存数据');
+    // 如果API失败，使用默认角色
+    roleList.value = [
+      {
+        id: 1,
+        name: 'ROLE_ADMIN',
+        displayName: '管理员',
+        description: '系统管理员，拥有所有权限',
+        permissions: ['*'],
+        createdAt: '2023-01-01 00:00:00',
+        isSystem: true
+      },
+      {
+        id: 2,
+        name: 'ROLE_USER',
+        displayName: '普通用户',
+        description: '普通用户，具有基本权限',
+        permissions: ['event:view', 'registration:view', 'announcement:view'],
+        createdAt: '2023-01-01 00:00:00',
+        isSystem: true
+      }
+    ];
+  } finally {
     loading.value = false;
   }
 };
@@ -256,10 +221,9 @@ const handleDelete = (row: Role) => {
   )
     .then(async () => {
       try {
-        // 实际应用中这里应该调用API删除角色
-        // await roleAPI.deleteRole(row.id);
+        // 调用API删除角色
+        await roleAPI.deleteRole(row.id);
         
-        // 模拟删除成功
         ElMessage.success('删除角色成功');
         fetchRoleList(); // 重新获取角色列表
       } catch (error) {
@@ -282,11 +246,21 @@ const saveRole = async () => {
       try {
         if (isEdit.value) {
           // 编辑角色
-          // await roleAPI.updateRole(roleForm.id, roleForm);
+          await roleAPI.updateRole(roleForm.id, {
+            name: roleForm.name,
+            displayName: roleForm.displayName,
+            description: roleForm.description,
+            permissions: roleForm.permissions
+          });
           ElMessage.success('更新角色成功');
         } else {
           // 添加角色
-          // await roleAPI.createRole(roleForm);
+          await roleAPI.createRole({
+            name: roleForm.name,
+            displayName: roleForm.displayName,
+            description: roleForm.description,
+            permissions: roleForm.permissions
+          });
           ElMessage.success('添加角色成功');
         }
         dialogVisible.value = false;

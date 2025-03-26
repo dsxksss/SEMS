@@ -183,8 +183,8 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { eventsAPI } from '../../../api/eventsAPI';
-import { categoryAPI } from '../../../api/categoryAPI';
+import { eventsAPI, categoryAPI } from '../../../api';
+import dayjs from 'dayjs';
 
 interface EventCategory {
   id: number;
@@ -260,18 +260,9 @@ const statusChangeMessage = computed(() => {
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    // 实际应用中调用API获取分类列表
-    // const response = await categoryAPI.getAllCategories();
-    // categories.value = response.data;
-    
-    // 使用模拟数据
-    categories.value = [
-      { id: 1, name: '田径赛事' },
-      { id: 2, name: '球类赛事' },
-      { id: 3, name: '水上赛事' },
-      { id: 4, name: '冰雪赛事' },
-      { id: 5, name: '格斗赛事' }
-    ];
+    // 调用API获取分类列表
+    const response = await categoryAPI.getAllCategories();
+    categories.value = response;
   } catch (error) {
     console.error('获取分类列表失败', error);
     ElMessage.error('获取分类列表失败');
@@ -282,117 +273,57 @@ const loadCategories = async () => {
 const fetchEventList = async () => {
   loading.value = true;
   try {
-    // 实际应用中调用API获取赛事列表
-    // const response = await eventsAPI.getEventList({
-    //   page: currentPage.value - 1,
-    //   size: pageSize.value,
-    //   name: filterForm.name,
-    //   categoryId: filterForm.categoryId,
-    //   status: filterForm.status
-    // });
-    // eventList.value = response.content;
-    // total.value = response.totalElements;
+    // 调用API获取所有赛事
+    const events = await eventsAPI.getAllEvents();
     
-    // 使用模拟数据
-    setTimeout(() => {
-      eventList.value = [
-        {
-          id: 1,
-          name: '2023年校园马拉松',
-          category: '田径赛事',
-          categoryId: 1,
-          startDate: '2023-05-15',
-          endDate: '2023-05-15',
-          registrationStartDate: '2023-04-15',
-          registrationEndDate: '2023-05-10',
-          location: '校园田径场',
-          organizer: '体育部',
-          description: '校园马拉松活动，分为3公里、5公里和10公里三个组别',
-          registrationCount: 85,
-          maxParticipants: 200,
-          status: 'REGISTRATION',
-          createdAt: '2023-04-01 10:00:00',
-          createdBy: 'admin'
-        },
-        {
-          id: 2,
-          name: '大学生篮球联赛',
-          category: '球类赛事',
-          categoryId: 2,
-          startDate: '2023-06-01',
-          endDate: '2023-06-15',
-          registrationStartDate: '2023-05-01',
-          registrationEndDate: '2023-05-20',
-          location: '体育馆',
-          organizer: '校体育协会',
-          description: '大学生篮球联赛，各学院组队参加',
-          registrationCount: 12,
-          maxParticipants: 16,
-          status: 'NOT_STARTED',
-          createdAt: '2023-04-05 14:30:00',
-          createdBy: 'admin'
-        },
-        {
-          id: 3,
-          name: '游泳比赛',
-          category: '水上赛事',
-          categoryId: 3,
-          startDate: '2023-04-20',
-          endDate: '2023-04-20',
-          registrationStartDate: '2023-03-20',
-          registrationEndDate: '2023-04-15',
-          location: '游泳馆',
-          organizer: '游泳协会',
-          description: '游泳比赛，包括自由泳、蛙泳、蝶泳等项目',
-          registrationCount: 32,
-          maxParticipants: 50,
-          status: 'IN_PROGRESS',
-          createdAt: '2023-03-10 09:15:00',
-          createdBy: 'admin'
-        },
-        {
-          id: 4,
-          name: '校园足球杯',
-          category: '球类赛事',
-          categoryId: 2,
-          startDate: '2023-05-10',
-          endDate: '2023-05-25',
-          registrationStartDate: '2023-04-10',
-          registrationEndDate: '2023-05-05',
-          location: '足球场',
-          organizer: '足球协会',
-          description: '校园足球杯比赛，各学院组队参加',
-          registrationCount: 8,
-          maxParticipants: 16,
-          status: 'REGISTRATION',
-          createdAt: '2023-04-01 08:30:00',
-          createdBy: 'event_manager'
-        },
-        {
-          id: 5,
-          name: '冬季滑冰比赛',
-          category: '冰雪赛事',
-          categoryId: 4,
-          startDate: '2023-01-15',
-          endDate: '2023-01-15',
-          registrationStartDate: '2022-12-15',
-          registrationEndDate: '2023-01-10',
-          location: '冰场',
-          organizer: '冰雪协会',
-          description: '冬季滑冰比赛，包括速滑和花样滑冰',
-          registrationCount: 28,
-          maxParticipants: 40,
-          status: 'ENDED',
-          createdAt: '2022-12-01 11:20:00',
-          createdBy: 'admin'
-        }
-      ];
-      total.value = 5;
-      loading.value = false;
-    }, 500);
+    // 筛选处理
+    let filteredEvents = events.filter(event => {
+      let matches = true;
+      if (filterForm.name && !event.name.toLowerCase().includes(filterForm.name.toLowerCase())) {
+        matches = false;
+      }
+      
+      if (filterForm.categoryId && event.category.id !== filterForm.categoryId) {
+        matches = false;
+      }
+      
+      if (filterForm.status && event.status !== filterForm.status) {
+        matches = false;
+      }
+      
+      return matches;
+    });
+    
+    // 计算总数
+    total.value = filteredEvents.length;
+    
+    // 分页处理
+    const startIndex = (currentPage.value - 1) * pageSize.value;
+    const endIndex = startIndex + pageSize.value;
+    
+    // 格式化数据
+    eventList.value = filteredEvents.slice(startIndex, endIndex).map(event => ({
+      id: event.id,
+      name: event.name,
+      category: event.category.name,
+      categoryId: event.category.id,
+      startDate: dayjs(event.startTime).format('YYYY-MM-DD'),
+      endDate: dayjs(event.endTime).format('YYYY-MM-DD'),
+      registrationStartDate: dayjs(event.registrationDeadline).subtract(14, 'day').format('YYYY-MM-DD'), // 假设报名开始时间为截止前14天
+      registrationEndDate: dayjs(event.registrationDeadline).format('YYYY-MM-DD'),
+      location: event.location,
+      organizer: '赛事组织者', // 假设API没有提供组织者信息
+      description: event.description,
+      registrationCount: 0, // 假设API没有提供报名数量信息
+      maxParticipants: event.maxParticipants,
+      status: event.status,
+      createdAt: dayjs(event.createdAt).format('YYYY-MM-DD HH:mm:ss'),
+      createdBy: 'admin' // 假设API没有提供创建者信息
+    }));
   } catch (error) {
     console.error('获取赛事列表失败', error);
     ElMessage.error('获取赛事列表失败，请刷新重试');
+  } finally {
     loading.value = false;
   }
 };

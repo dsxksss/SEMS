@@ -287,7 +287,7 @@ const fetchAnnouncements = async () => {
       title: ann.title,
       content: ann.content,
       createdDate: dayjs(ann.createdAt).format('YYYY-MM-DD'),
-      authorName: ann.author.username
+      authorName: ann.author && ann.author.username ? ann.author.username : '未知用户'
     }));
   } catch (error) {
     console.error('获取系统公告失败:', error);

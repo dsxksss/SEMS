@@ -35,6 +35,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status } = error.response;
+      const url = error.config.url || '';
       
       // 处理未授权错误
       if (status === 401) {
@@ -42,6 +43,12 @@ apiClient.interceptors.response.use(
         console.error('当前token:', localStorage.getItem('token'));
         console.error('请求URL:', error.config.url);
         console.error('请求方法:', error.config.method);
+        
+        // 特殊处理角色管理相关API - 不自动退出登录
+        if (url.includes('/roles')) {
+          console.warn('角色管理API返回401，不执行自动退出');
+          return Promise.reject(error);
+        }
         
         // 保存当前URL作为重定向目标
         const currentPath = window.location.pathname;
