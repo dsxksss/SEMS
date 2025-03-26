@@ -1,6 +1,6 @@
 package com.sems.sportseventmanagementsystem.repository;
 
-import com.sems.sportseventmanagementsystem.model.entity.Announcement;
+import com.sems.sportseventmanagementsystem.entity.Announcement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,12 +10,9 @@ import java.util.List;
 
 @Repository
 public interface AnnouncementRepository extends JpaRepository<Announcement, Long> {
+    Page<Announcement> findByIsPublishedTrue(Pageable pageable);
     
-    List<Announcement> findByTypeAndStatusOrderByCreateTimeDesc(String type, Integer status);
+    Page<Announcement> findByEventIdAndIsPublishedTrue(Long eventId, Pageable pageable);
     
-    List<Announcement> findByStatusOrderByCreateTimeDesc(Integer status);
-    
-    List<Announcement> findTop5ByStatusOrderByCreateTimeDesc(Integer status);
-    
-    Page<Announcement> findByStatus(Integer status, Pageable pageable);
+    List<Announcement> findTop5ByIsPublishedTrueOrderByCreatedAtDesc();
 } 

@@ -1,250 +1,267 @@
 package com.sems.sportseventmanagementsystem.config;
 
-import com.sems.sportseventmanagementsystem.model.entity.Event;
-import com.sems.sportseventmanagementsystem.model.entity.User;
-import com.sems.sportseventmanagementsystem.repository.EventRepository;
-import com.sems.sportseventmanagementsystem.repository.UserRepository;
-import com.sems.sportseventmanagementsystem.model.entity.Announcement;
-import com.sems.sportseventmanagementsystem.repository.AnnouncementRepository;
+import com.sems.sportseventmanagementsystem.entity.*;
+import com.sems.sportseventmanagementsystem.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-@Configuration
-public class DataInitializer {
+@Component
+public class DataInitializer implements CommandLineRunner {
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-    
+    private RoleRepository roleRepository;
+
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private UserRepository userRepository;
 
-    @Bean
-    public CommandLineRunner initData(UserRepository userRepository, EventRepository eventRepository, AnnouncementRepository announcementRepository) {
-        return args -> {
-            // 只有在数据库为空时才初始化数据
-            if (userRepository.count() == 0) {
-                System.out.println("正在初始化用户数据...");
-                initializeUsers(userRepository);
-            }
+    @Autowired
+    private EventCategoryRepository categoryRepository;
 
-            if (eventRepository.count() == 0) {
-                System.out.println("正在初始化赛事数据...");
-                initializeEvents(eventRepository);
-            }
+    @Autowired
+    private EventRepository eventRepository;
+
+    @Autowired
+    private AnnouncementRepository announcementRepository;
+
+    @Autowired
+    private RegistrationRepository registrationRepository;
+
+    @Autowired
+    private EventResultRepository resultRepository;
+
+    @Autowired
+    private PasswordEncoder encoder;
+
+    @Override
+    public void run(String... args) throws Exception {
+        // 只有当没有角色数据时才初始化
+        if (roleRepository.count() == 0) {
+            initRoles();
+            initUsers();
+            User admin = userRepository.findByUsername("admin").orElse(null);
             
-            if (announcementRepository.count() == 0) {
-                System.out.println("正在初始化公告数据...");
-                initializeAnnouncements(announcementRepository);
+            if (admin != null) {
+                initCategories();
+                initEvents(admin);
+                initAnnouncements(admin);
+                
+                // 获取一个赛事用于初始化报名和结果数据
+                List<Event> events = eventRepository.findAll();
+                if (!events.isEmpty()) {
+                    Event event = events.get(0);
+                    
+                    // 获取运动员进行报名初始化
+                    User athlete = userRepository.findByUsername("athlete").orElse(null);
+                    if (athlete != null) {
+                        initRegistrations(athlete, event);
+                        initResults(athlete, event, admin);
+                    }
+                }
             }
-        };
-    }
-
-    private void initializeUsers(UserRepository userRepository) {
-        // 创建管理员用户
-        User admin = new User();
-        admin.setUsername("admin");
-        admin.setPassword(passwordEncoder.encode("admin123"));
-        admin.setEmail("admin@example.com");
-        admin.setPhone("13800138000");
-        admin.setRealName("系统管理员");
-        admin.setRole("ADMIN");
-        admin.setStatus(1);
-        admin.setCreateTime(LocalDateTime.now());
-        admin.setUpdateTime(LocalDateTime.now());
-        userRepository.save(admin);
-
-        // 创建普通用户
-        User user1 = new User();
-        user1.setUsername("user1");
-        user1.setPassword(passwordEncoder.encode("user123"));
-        user1.setEmail("user1@example.com");
-        user1.setPhone("13900139001");
-        user1.setRealName("张三");
-        user1.setRole("USER");
-        user1.setStatus(1);
-        user1.setCreateTime(LocalDateTime.now());
-        user1.setUpdateTime(LocalDateTime.now());
-        userRepository.save(user1);
-
-        // 创建运动员用户
-        User athlete1 = new User();
-        athlete1.setUsername("athlete1");
-        athlete1.setPassword(passwordEncoder.encode("athlete123"));
-        athlete1.setEmail("athlete1@example.com");
-        athlete1.setPhone("13700137001");
-        athlete1.setRealName("李四");
-        athlete1.setRole("ATHLETE");
-        athlete1.setStatus(1);
-        athlete1.setCreateTime(LocalDateTime.now());
-        athlete1.setUpdateTime(LocalDateTime.now());
-        userRepository.save(athlete1);
-        
-        // 创建观众用户
-        User audience1 = new User();
-        audience1.setUsername("audience1");
-        audience1.setPassword(passwordEncoder.encode("audience123"));
-        audience1.setEmail("audience1@example.com");
-        audience1.setPhone("13600136001");
-        audience1.setRealName("王五");
-        audience1.setRole("AUDIENCE");
-        audience1.setStatus(1);
-        audience1.setCreateTime(LocalDateTime.now());
-        audience1.setUpdateTime(LocalDateTime.now());
-        userRepository.save(audience1);
-
-        System.out.println("用户数据初始化完成");
-    }
-
-    private void initializeEvents(EventRepository eventRepository) {
-        // 创建一些示例赛事
-        
-        // 已完成的赛事
-        Event pastEvent1 = new Event();
-        pastEvent1.setName("2023年春季校园运动会");
-        pastEvent1.setDescription("校园传统体育盛事，包含田径、球类等多种项目。这是一个展示学生体育才能的平台，欢迎全校师生积极参与！");
-        pastEvent1.setStartTime(LocalDateTime.of(2023, 4, 15, 9, 0));
-        pastEvent1.setEndTime(LocalDateTime.of(2023, 4, 17, 18, 0));
-        pastEvent1.setLocation("中央体育场");
-        pastEvent1.setStatus("COMPLETED");
-        pastEvent1.setMaxParticipants(500);
-        pastEvent1.setCurrentParticipants(320);
-        pastEvent1.setCreateTime(LocalDateTime.of(2023, 3, 1, 10, 0));
-        pastEvent1.setUpdateTime(LocalDateTime.of(2023, 4, 18, 15, 0));
-        Event savedPastEvent1 = eventRepository.save(pastEvent1);
-        addEventCategories(savedPastEvent1.getId(), Arrays.asList("田径", "球类", "校园活动"));
-
-        Event pastEvent2 = new Event();
-        pastEvent2.setName("2023年暑期篮球联赛");
-        pastEvent2.setDescription("暑期篮球爱好者联赛，分团体和个人组。比赛采用淘汰赛制，优胜者将获得丰厚奖励。欢迎篮球爱好者踊跃报名！");
-        pastEvent2.setStartTime(LocalDateTime.of(2023, 7, 10, 14, 0));
-        pastEvent2.setEndTime(LocalDateTime.of(2023, 7, 20, 20, 0));
-        pastEvent2.setLocation("市体育馆");
-        pastEvent2.setStatus("COMPLETED");
-        pastEvent2.setMaxParticipants(200);
-        pastEvent2.setCurrentParticipants(185);
-        pastEvent2.setCreateTime(LocalDateTime.of(2023, 6, 1, 9, 0));
-        pastEvent2.setUpdateTime(LocalDateTime.of(2023, 7, 21, 10, 0));
-        Event savedPastEvent2 = eventRepository.save(pastEvent2);
-        addEventCategories(savedPastEvent2.getId(), Arrays.asList("篮球", "团队赛", "个人赛"));
-
-        // 正在进行的赛事
-        Event ongoingEvent = new Event();
-        ongoingEvent.setName("2023年秋季足球联赛");
-        ongoingEvent.setDescription("秋季足球联赛，面向各年龄段足球爱好者。比赛将持续两个月，每周末进行，欢迎各队伍踊跃报名参与！");
-        ongoingEvent.setStartTime(LocalDateTime.now().minusDays(10));
-        ongoingEvent.setEndTime(LocalDateTime.now().plusDays(20));
-        ongoingEvent.setLocation("市足球场");
-        ongoingEvent.setStatus("ONGOING");
-        ongoingEvent.setMaxParticipants(300);
-        ongoingEvent.setCurrentParticipants(250);
-        ongoingEvent.setCreateTime(LocalDateTime.now().minusDays(30));
-        ongoingEvent.setUpdateTime(LocalDateTime.now().minusDays(5));
-        Event savedOngoingEvent = eventRepository.save(ongoingEvent);
-        addEventCategories(savedOngoingEvent.getId(), Arrays.asList("足球", "团队赛", "户外活动"));
-
-        // 即将开始的赛事
-        Event upcomingEvent1 = new Event();
-        upcomingEvent1.setName("2023年秋季马拉松挑战赛");
-        upcomingEvent1.setDescription("城市环城马拉松比赛，全程42.195公里。比赛途经市区多个著名景点，将设置多个补给站和医疗点，确保参赛者安全。");
-        upcomingEvent1.setStartTime(LocalDateTime.now().plusDays(15));
-        upcomingEvent1.setEndTime(LocalDateTime.now().plusDays(15).plusHours(8));
-        upcomingEvent1.setLocation("城市环路");
-        upcomingEvent1.setStatus("UPCOMING");
-        upcomingEvent1.setMaxParticipants(1000);
-        upcomingEvent1.setCurrentParticipants(578);
-        upcomingEvent1.setCreateTime(LocalDateTime.now().minusDays(60));
-        upcomingEvent1.setUpdateTime(LocalDateTime.now().minusDays(2));
-        Event savedUpcomingEvent1 = eventRepository.save(upcomingEvent1);
-        addEventCategories(savedUpcomingEvent1.getId(), Arrays.asList("马拉松", "长跑", "户外活动"));
-
-        Event upcomingEvent2 = new Event();
-        upcomingEvent2.setName("2023年冬季滑雪节");
-        upcomingEvent2.setDescription("冬季户外运动盛事，包含多种雪上项目。活动设置初级、中级和高级三个难度的雪道，适合不同水平的滑雪爱好者参与。");
-        upcomingEvent2.setStartTime(LocalDateTime.now().plusDays(45));
-        upcomingEvent2.setEndTime(LocalDateTime.now().plusDays(50));
-        upcomingEvent2.setLocation("雪山度假村");
-        upcomingEvent2.setStatus("UPCOMING");
-        upcomingEvent2.setMaxParticipants(400);
-        upcomingEvent2.setCurrentParticipants(150);
-        upcomingEvent2.setCreateTime(LocalDateTime.now().minusDays(20));
-        upcomingEvent2.setUpdateTime(LocalDateTime.now());
-        Event savedUpcomingEvent2 = eventRepository.save(upcomingEvent2);
-        addEventCategories(savedUpcomingEvent2.getId(), Arrays.asList("滑雪", "冬季运动", "户外活动"));
-        
-        // 添加赛事图片
-        addEventImages(savedPastEvent1.getId(), "https://placekitten.com/800/400");
-        addEventImages(savedPastEvent2.getId(), "https://placekitten.com/801/400");
-        addEventImages(savedOngoingEvent.getId(), "https://placekitten.com/802/400");
-        addEventImages(savedUpcomingEvent1.getId(), "https://placekitten.com/803/400");
-        addEventImages(savedUpcomingEvent2.getId(), "https://placekitten.com/804/400");
-
-        System.out.println("赛事数据初始化完成");
-    }
-    
-    private void addEventCategories(Long eventId, List<String> categories) {
-        for (String category : categories) {
-            jdbcTemplate.update(
-                "INSERT INTO event_category (event_id, category) VALUES (?, ?)",
-                eventId, category
-            );
         }
     }
-    
-    private void addEventImages(Long eventId, String imageUrl) {
-        jdbcTemplate.update(
-            "INSERT INTO event_image (event_id, image_url, create_time) VALUES (?, ?, ?)",
-            eventId, imageUrl, LocalDateTime.now()
+
+    private void initRoles() {
+        System.out.println("Initializing roles...");
+        Arrays.asList(ERole.values()).forEach(role -> 
+            roleRepository.save(new Role(role))
         );
     }
-    
-    private void initializeAnnouncements(AnnouncementRepository announcementRepository) {
-        // 系统公告
-        Announcement systemAnnouncement1 = new Announcement();
-        systemAnnouncement1.setTitle("系统升级通知");
-        systemAnnouncement1.setContent("尊敬的用户，本系统将于2023年11月15日凌晨2:00-4:00进行例行维护升级，期间系统功能将暂停使用。给您带来的不便，敬请谅解。");
-        systemAnnouncement1.setType("SYSTEM");
-        systemAnnouncement1.setStatus(1);
-        systemAnnouncement1.setCreateTime(LocalDateTime.now().minusDays(5));
-        systemAnnouncement1.setUpdateTime(LocalDateTime.now().minusDays(5));
-        announcementRepository.save(systemAnnouncement1);
+
+    private void initUsers() {
+        System.out.println("Initializing users...");
         
-        // 活动公告
-        Announcement eventAnnouncement1 = new Announcement();
-        eventAnnouncement1.setTitle("2023年秋季马拉松挑战赛报名开始");
-        eventAnnouncement1.setContent("2023年秋季马拉松挑战赛报名通道已开放！本次比赛将于2023年11月15日在城市环路举行，全程42.195公里。参赛者将获得精美纪念T恤和完赛奖牌。名额有限，请尽快报名！");
-        eventAnnouncement1.setType("EVENT");
-        eventAnnouncement1.setStatus(1);
-        eventAnnouncement1.setCreateTime(LocalDateTime.now().minusDays(10));
-        eventAnnouncement1.setUpdateTime(LocalDateTime.now().minusDays(10));
-        announcementRepository.save(eventAnnouncement1);
+        // 创建管理员
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setEmail("admin@example.com");
+        admin.setPassword(encoder.encode("admin123"));
+        admin.setPhone("13800138000");
+        admin.setRealName("系统管理员");
+        admin.setEnabled(true);
         
-        Announcement eventAnnouncement2 = new Announcement();
-        eventAnnouncement2.setTitle("2023年冬季滑雪节报名优惠");
-        eventAnnouncement2.setContent("2023年冬季滑雪节早鸟优惠来袭！即日起至11月30日报名参与，可享受8折优惠。本次活动将在雪山度假村举行，包含多种雪上项目，适合不同水平的滑雪爱好者。");
-        eventAnnouncement2.setType("EVENT");
-        eventAnnouncement2.setStatus(1);
-        eventAnnouncement2.setCreateTime(LocalDateTime.now().minusDays(3));
-        eventAnnouncement2.setUpdateTime(LocalDateTime.now().minusDays(3));
-        announcementRepository.save(eventAnnouncement2);
+        Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Set<Role> adminRoles = new HashSet<>();
+        adminRoles.add(adminRole);
+        admin.setRoles(adminRoles);
         
-        // 紧急公告
-        Announcement emergencyAnnouncement = new Announcement();
-        emergencyAnnouncement.setTitle("紧急通知：足球场地变更");
-        emergencyAnnouncement.setContent("由于原定足球场地维修原因，2023年秋季足球联赛本周末(11月11日-12日)的比赛场地临时变更为市体育中心南区足球场。请参赛队伍提前做好准备，按照新场地安排前往比赛。");
-        emergencyAnnouncement.setType("EMERGENCY");
-        emergencyAnnouncement.setStatus(1);
-        emergencyAnnouncement.setCreateTime(LocalDateTime.now().minusHours(12));
-        emergencyAnnouncement.setUpdateTime(LocalDateTime.now().minusHours(12));
-        announcementRepository.save(emergencyAnnouncement);
+        userRepository.save(admin);
         
-        System.out.println("公告数据初始化完成");
+        // 创建运动员
+        User athlete = new User();
+        athlete.setUsername("athlete");
+        athlete.setEmail("athlete@example.com");
+        athlete.setPassword(encoder.encode("athlete123"));
+        athlete.setPhone("13900139000");
+        athlete.setRealName("张三");
+        athlete.setEnabled(true);
+        
+        Role athleteRole = roleRepository.findByName(ERole.ROLE_ATHLETE)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Set<Role> athleteRoles = new HashSet<>();
+        athleteRoles.add(athleteRole);
+        athlete.setRoles(athleteRoles);
+        
+        userRepository.save(athlete);
+        
+        // 创建观众
+        User spectator = new User();
+        spectator.setUsername("spectator");
+        spectator.setEmail("spectator@example.com");
+        spectator.setPassword(encoder.encode("spectator123"));
+        spectator.setPhone("13700137000");
+        spectator.setRealName("李四");
+        spectator.setEnabled(true);
+        
+        Role spectatorRole = roleRepository.findByName(ERole.ROLE_SPECTATOR)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Set<Role> spectatorRoles = new HashSet<>();
+        spectatorRoles.add(spectatorRole);
+        spectator.setRoles(spectatorRoles);
+        
+        userRepository.save(spectator);
+    }
+
+    private void initCategories() {
+        System.out.println("Initializing categories...");
+        
+        List<String> categoryNames = Arrays.asList("足球", "篮球", "羽毛球", "乒乓球", "网球", "游泳", "田径", "健身");
+        List<String> categoryDescs = Arrays.asList(
+                "11人制足球比赛与活动", 
+                "5v5篮球比赛与活动", 
+                "羽毛球单打、双打比赛", 
+                "乒乓球单打、双打、团体赛", 
+                "网球单打、双打比赛", 
+                "游泳各泳姿竞速赛", 
+                "田径各项目比赛", 
+                "健身活动与挑战赛");
+        
+        for (int i = 0; i < categoryNames.size(); i++) {
+            EventCategory category = new EventCategory();
+            category.setName(categoryNames.get(i));
+            category.setDescription(categoryDescs.get(i));
+            category.setIsActive(true);
+            categoryRepository.save(category);
+        }
+    }
+
+    private void initEvents(User admin) {
+        System.out.println("Initializing events...");
+        
+        List<EventCategory> categories = categoryRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 添加即将开始的赛事
+        Event upcoming = new Event();
+        upcoming.setName("2024校园足球联赛");
+        upcoming.setDescription("2024年校园足球联赛，欢迎各院系组队参加！");
+        upcoming.setStartTime(now.plusDays(7));
+        upcoming.setEndTime(now.plusDays(14));
+        upcoming.setLocation("北校区足球场");
+        upcoming.setMaxParticipants(16);
+        upcoming.setCurrentParticipants(8);
+        upcoming.setIsActive(true);
+        upcoming.setStatus(EventStatus.PENDING);
+        upcoming.setCategory(categories.get(0)); // 足球
+        upcoming.setCreatedBy(admin);
+        eventRepository.save(upcoming);
+        
+        // 添加进行中的赛事
+        Event ongoing = new Event();
+        ongoing.setName("2024羽毛球校际邀请赛");
+        ongoing.setDescription("邀请周边高校参加的羽毛球友谊赛");
+        ongoing.setStartTime(now.minusDays(2));
+        ongoing.setEndTime(now.plusDays(3));
+        ongoing.setLocation("主体育馆");
+        ongoing.setMaxParticipants(32);
+        ongoing.setCurrentParticipants(28);
+        ongoing.setIsActive(true);
+        ongoing.setStatus(EventStatus.ONGOING);
+        ongoing.setCategory(categories.get(2)); // 羽毛球
+        ongoing.setCreatedBy(admin);
+        eventRepository.save(ongoing);
+        
+        // 添加已完成的赛事
+        Event completed = new Event();
+        completed.setName("2023年田径运动会");
+        completed.setDescription("年度田径运动会，包括短跑、长跑、跳高、跳远等项目");
+        completed.setStartTime(now.minusDays(30));
+        completed.setEndTime(now.minusDays(28));
+        completed.setLocation("田径场");
+        completed.setMaxParticipants(100);
+        completed.setCurrentParticipants(95);
+        completed.setIsActive(true);
+        completed.setStatus(EventStatus.COMPLETED);
+        completed.setCategory(categories.get(6)); // 田径
+        completed.setCreatedBy(admin);
+        eventRepository.save(completed);
+    }
+
+    private void initAnnouncements(User admin) {
+        System.out.println("Initializing announcements...");
+        
+        List<Event> events = eventRepository.findAll();
+        
+        Announcement announcement1 = new Announcement();
+        announcement1.setTitle("关于2024年体育赛事安排的通知");
+        announcement1.setContent("各位师生，2024年体育赛事安排已确定，请关注网站更新，及时报名参加您感兴趣的赛事活动。");
+        announcement1.setIsPublished(true);
+        announcement1.setCreatedBy(admin);
+        announcementRepository.save(announcement1);
+        
+        if (!events.isEmpty()) {
+            Announcement announcement2 = new Announcement();
+            announcement2.setTitle("足球联赛报名开始通知");
+            announcement2.setContent("2024校园足球联赛报名现已开始，请各参赛队伍于5月10日前完成报名手续。");
+            announcement2.setIsPublished(true);
+            announcement2.setCreatedBy(admin);
+            announcement2.setEvent(events.get(0));
+            announcementRepository.save(announcement2);
+            
+            Announcement announcement3 = new Announcement();
+            announcement3.setTitle("羽毛球邀请赛赛程公布");
+            announcement3.setContent("2024羽毛球校际邀请赛的详细赛程安排已公布，请参赛选手查看并准时参加比赛。");
+            announcement3.setIsPublished(true);
+            announcement3.setCreatedBy(admin);
+            announcement3.setEvent(events.get(1));
+            announcementRepository.save(announcement3);
+        }
+    }
+
+    private void initRegistrations(User athlete, Event event) {
+        System.out.println("Initializing registrations...");
+        
+        Registration registration = new Registration();
+        registration.setUser(athlete);
+        registration.setEvent(event);
+        registration.setStatus(RegistrationStatus.APPROVED);
+        registration.setContactPhone(athlete.getPhone());
+        registration.setRemarks("我希望参加本次比赛");
+        registration.setHasPaid(true);
+        
+        registrationRepository.save(registration);
+    }
+
+    private void initResults(User athlete, Event event, User admin) {
+        System.out.println("Initializing results...");
+        
+        EventResult result = new EventResult();
+        result.setEvent(event);
+        result.setAthlete(athlete);
+        result.setRank(1);
+        result.setScore("90");
+        result.setRemarks("优秀表现");
+        result.setRecordedBy(admin);
+        
+        resultRepository.save(result);
     }
 } 

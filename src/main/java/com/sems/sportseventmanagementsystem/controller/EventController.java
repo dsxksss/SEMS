@@ -1,127 +1,182 @@
 package com.sems.sportseventmanagementsystem.controller;
 
-import com.sems.sportseventmanagementsystem.common.Result;
-import com.sems.sportseventmanagementsystem.model.dto.EventDTO;
-import com.sems.sportseventmanagementsystem.model.entity.Event;
-import com.sems.sportseventmanagementsystem.service.EventService;
+import com.sems.sportseventmanagementsystem.entity.Event;
+import com.sems.sportseventmanagementsystem.entity.EventCategory;
+import com.sems.sportseventmanagementsystem.entity.EventStatus;
+import com.sems.sportseventmanagementsystem.entity.User;
+import com.sems.sportseventmanagementsystem.payload.response.MessageResponse;
+import com.sems.sportseventmanagementsystem.repository.EventCategoryRepository;
+import com.sems.sportseventmanagementsystem.repository.EventRepository;
+import com.sems.sportseventmanagementsystem.repository.UserRepository;
+import com.sems.sportseventmanagementsystem.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
+@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
-@RequestMapping("/events")
+@RequestMapping("/api/events")
 public class EventController {
+    @Autowired
+    EventRepository eventRepository;
 
     @Autowired
-    private EventService eventService;
+    EventCategoryRepository categoryRepository;
 
-    /**
-     * 创建新赛事
-     */
+    @Autowired
+    UserRepository userRepository;
+
+    @GetMapping("/public")
+    public ResponseEntity<Page<Event>> getAllPublicEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "startTime") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        Page<Event> events = eventRepository.findByIsActiveTrue(pageable);
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/public/search")
+    public ResponseEntity<Page<Event>> searchPublicEvents(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Event> events = eventRepository.findByIsActiveTrueAndNameContainingIgnoreCase(name, pageable);
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/public/category/{categoryId}")
+    public ResponseEntity<Page<Event>> getEventsByCategory(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return categoryRepository.findById(categoryId)
+                .map(category -> {
+                    Pageable pageable = PageRequest.of(page, size);
+                    Page<Event> events = eventRepository.findByIsActiveTrueAndCategory(category, pageable);
+                    return ResponseEntity.ok(events);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/public/upcoming")
+    public ResponseEntity<List<Event>> getUpcomingEvents() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime nextWeek = now.plusDays(7);
+        List<Event> events = eventRepository.findUpcomingEvents(now, nextWeek);
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/public/status/{status}")
+    public ResponseEntity<Page<Event>> getEventsByStatus(
+            @PathVariable EventStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Event> events = eventRepository.findByIsActiveTrueAndStatus(status, pageable);
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/public/{id}")
+    public ResponseEntity<?> getPublicEventById(@PathVariable Long id) {
+        return eventRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Event>> getAllEvents() {
+        List<Event> events = eventRepository.findAll();
+        return ResponseEntity.ok(events);
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Event> createEvent(@RequestBody EventDTO eventDTO) {
-        return Result.success(eventService.createEvent(eventDTO));
+    public ResponseEntity<?> createEvent(@RequestBody Event event) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userRepository.findById(userDetails.getId()).orElseThrow(() -> new RuntimeException("User not found"));
+        
+        event.setCreatedBy(user);
+        event.setCurrentParticipants(0);
+        event.setIsActive(true);
+        event.setStatus(EventStatus.PENDING);
+        
+        Event savedEvent = eventRepository.save(event);
+        return ResponseEntity.ok(savedEvent);
     }
 
-    /**
-     * 更新赛事信息
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Event> updateEvent(@PathVariable Long id, @RequestBody EventDTO eventDTO) {
-        return Result.success(eventService.updateEvent(id, eventDTO));
+    public ResponseEntity<?> updateEvent(@PathVariable Long id, @RequestBody Event eventDetails) {
+        return eventRepository.findById(id)
+                .map(event -> {
+                    if (eventDetails.getName() != null) {
+                        event.setName(eventDetails.getName());
+                    }
+                    if (eventDetails.getDescription() != null) {
+                        event.setDescription(eventDetails.getDescription());
+                    }
+                    if (eventDetails.getStartTime() != null) {
+                        event.setStartTime(eventDetails.getStartTime());
+                    }
+                    if (eventDetails.getEndTime() != null) {
+                        event.setEndTime(eventDetails.getEndTime());
+                    }
+                    if (eventDetails.getLocation() != null) {
+                        event.setLocation(eventDetails.getLocation());
+                    }
+                    if (eventDetails.getMaxParticipants() != null) {
+                        event.setMaxParticipants(eventDetails.getMaxParticipants());
+                    }
+                    if (eventDetails.getEventImage() != null) {
+                        event.setEventImage(eventDetails.getEventImage());
+                    }
+                    if (eventDetails.getStatus() != null) {
+                        event.setStatus(eventDetails.getStatus());
+                    }
+                    if (eventDetails.getCategory() != null) {
+                        event.setCategory(eventDetails.getCategory());
+                    }
+                    
+                    return ResponseEntity.ok(eventRepository.save(event));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /**
-     * 删除赛事
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Boolean> deleteEvent(@PathVariable Long id) {
-        boolean result = eventService.deleteEvent(id);
-        return Result.success(result);
+    public ResponseEntity<?> deleteEvent(@PathVariable Long id) {
+        return eventRepository.findById(id)
+                .map(event -> {
+                    event.setIsActive(false);
+                    eventRepository.save(event);
+                    return ResponseEntity.ok(new MessageResponse("Event deleted successfully!"));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /**
-     * 获取赛事详情
-     */
-    @GetMapping("/{id}")
-    public Result<Event> getEventById(@PathVariable Long id) {
-        return Result.success(eventService.getEventById(id));
-    }
-
-    /**
-     * 获取所有赛事
-     */
-    @GetMapping
-    public Result<List<Event>> getAllEvents() {
-        return Result.success(eventService.getAllEvents());
-    }
-
-    /**
-     * 分页获取赛事
-     */
-    @GetMapping("/page")
-    public Result<List<Event>> getEventsByPage(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return Result.success(eventService.getEventsByPage(page, size));
-    }
-
-    /**
-     * 通过状态筛选赛事
-     */
-    @GetMapping("/status/{status}")
-    public Result<List<Event>> getEventsByStatus(@PathVariable String status) {
-        return Result.success(eventService.getEventsByStatus(status));
-    }
-
-    /**
-     * 获取即将开始的赛事
-     */
-    @GetMapping("/upcoming")
-    public Result<List<Event>> getUpcomingEvents(
-            @RequestParam(defaultValue = "7") int days) {
-        return Result.success(eventService.getUpcomingEvents(days));
-    }
-
-    /**
-     * 获取最新赛事
-     */
-    @GetMapping("/latest")
-    public Result<List<Event>> getLatestEvents(
-            @RequestParam(defaultValue = "3") int limit) {
-        return Result.success(eventService.getLatestEvents(limit));
-    }
-    
-    /**
-     * 公开接口：获取公开赛事列表（分页）
-     * 此接口不需要身份验证，返回符合条件的赛事信息
-     */
-    @GetMapping("/public")
-    public Result<Map<String, Object>> getPublicEvents(
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        List<Event> events = eventService.getEventsByPage(page, size);
-        // 这里可以根据查询参数进行更复杂的筛选，目前简单返回分页数据
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", events);
-        result.put("total", events.size()); // 实际项目中应该返回总数
-        result.put("page", page);
-        result.put("size", size);
-        
-        return Result.success(result);
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Event>> getMyEvents() {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        List<Event> events = eventRepository.findByCreatedBy_Id(userDetails.getId());
+        return ResponseEntity.ok(events);
     }
 } 
