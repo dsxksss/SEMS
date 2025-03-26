@@ -8,7 +8,7 @@ export const categoryAPI = {
   getPublicCategories: async () => {
     try {
       console.log('获取公开类别列表...');
-      const response = await apiClient.get<EventCategory[]>('/api/categories/public');
+      const response = await apiClient.get<EventCategory[]>('/categories/public');
       console.log('获取公开类别列表成功:', response.data);
       return response.data;
     } catch (error) {
@@ -23,7 +23,7 @@ export const categoryAPI = {
   getAllCategories: async () => {
     try {
       console.log('获取所有类别列表...');
-      const response = await apiClient.get<EventCategory[]>('/api/categories');
+      const response = await apiClient.get<EventCategory[]>('/categories');
       console.log('获取所有类别列表成功:', response.data);
       return response.data;
     } catch (error) {
@@ -38,7 +38,7 @@ export const categoryAPI = {
   getCategoryById: async (id: number) => {
     try {
       console.log(`获取类别 ${id} 详情...`);
-      const response = await apiClient.get<EventCategory>(`/api/categories/${id}`);
+      const response = await apiClient.get<EventCategory>(`/categories/${id}`);
       console.log(`获取类别 ${id} 详情成功:`, response.data);
       return response.data;
     } catch (error) {
@@ -53,7 +53,7 @@ export const categoryAPI = {
   createCategory: async (category: Omit<EventCategory, 'id'>) => {
     try {
       console.log('创建类别...');
-      const response = await apiClient.post<EventCategory>('/api/categories', category);
+      const response = await apiClient.post<EventCategory>('/categories', category);
       console.log('创建类别成功:', response.data);
       return response.data;
     } catch (error) {
@@ -68,7 +68,7 @@ export const categoryAPI = {
   updateCategory: async (id: number, category: Partial<EventCategory>) => {
     try {
       console.log(`更新类别 ${id}...`);
-      const response = await apiClient.put<EventCategory>(`/api/categories/${id}`, category);
+      const response = await apiClient.put<EventCategory>(`/categories/${id}`, category);
       console.log(`更新类别 ${id} 成功:`, response.data);
       return response.data;
     } catch (error) {
@@ -83,7 +83,7 @@ export const categoryAPI = {
   deleteCategory: async (id: number) => {
     try {
       console.log(`删除类别 ${id}...`);
-      const response = await apiClient.delete(`/api/categories/${id}`);
+      const response = await apiClient.delete(`/categories/${id}`);
       console.log(`删除类别 ${id} 成功:`, response.data);
       return response.data;
     } catch (error) {

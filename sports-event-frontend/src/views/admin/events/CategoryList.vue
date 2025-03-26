@@ -137,46 +137,9 @@ const fetchCategoryList = async () => {
   loading.value = true;
   try {
     console.log('开始获取赛事分类列表...');
-    // 尝试调用API获取分类列表
-    try {
-      const response = await categoryAPI.getAllCategories();
-      categoryList.value = response;
-      total.value = response.length;
-    } catch (error) {
-      console.error('API调用失败，使用模拟数据:', error);
-      // 使用模拟数据
-      categoryList.value = [
-        {
-          id: 1,
-          name: '田径赛事',
-          description: '包括跑步、跳远、铅球等田径类比赛',
-          isActive: true,
-          eventCount: 8
-        },
-        {
-          id: 2,
-          name: '球类赛事',
-          description: '包括篮球、足球、排球等球类比赛',
-          isActive: true,
-          eventCount: 12
-        },
-        {
-          id: 3,
-          name: '水上赛事',
-          description: '包括游泳、跳水、水球等水上项目',
-          isActive: true,
-          eventCount: 5
-        },
-        {
-          id: 4,
-          name: '冰雪赛事',
-          description: '包括滑冰、滑雪等冰雪项目',
-          isActive: false,
-          eventCount: 0
-        }
-      ];
-      total.value = categoryList.value.length;
-    }
+    const response = await categoryAPI.getAllCategories();
+    categoryList.value = response;
+    total.value = response.length;
     console.log('获取赛事分类列表成功:', categoryList.value);
   } catch (error) {
     console.error('获取分类列表失败', error);
@@ -332,7 +295,8 @@ onMounted(() => {
 .main-container {
   background-color: #fff;
   padding: 20px;
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .header {
@@ -340,21 +304,53 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+  padding-top: 15px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+/* 表格样式优化 */
+:deep(.el-table th) {
+  background-color: #f5f7fa;
+  color: #606266;
+  font-weight: 600;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
+  background-color: #fafafa;
+}
+
+:deep(.el-table__row:hover td) {
+  background-color: #f5f7fa !important;
+}
+
+/* 按钮样式优化 */
+:deep(.el-button.is-round) {
+  border-radius: 20px;
+}
+
+:deep(.el-tag) {
+  padding: 0 8px;
+  height: 24px;
+  line-height: 24px;
+  border-radius: 4px;
 }
 </style> 

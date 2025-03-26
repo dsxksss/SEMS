@@ -135,4 +135,107 @@ html, body, #app {
   margin: 0;
   padding: 0;
 }
+
+/* 侧边栏优化 */
+.el-menu-vertical {
+  background-color: #304156 !important;
+  transition: width 0.3s;
+}
+
+.el-menu-item {
+  height: 50px !important;
+  line-height: 50px !important;
+  border-left: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.el-menu-item.is-active {
+  background-color: #263445 !important;
+  color: #409EFF !important;
+  border-left: 3px solid #409EFF;
+}
+
+.el-menu-item:hover {
+  background-color: #263445 !important;
+}
+
+.el-sub-menu__title {
+  height: 50px !important;
+  line-height: 50px !important;
+  transition: all 0.3s;
+}
+
+.el-sub-menu__title:hover {
+  background-color: #263445 !important;
+}
+
+/* 面包屑导航 */
+.el-breadcrumb__inner {
+  color: #909399 !important;
+  font-weight: normal !important;
+}
+
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: #303133 !important;
+  font-weight: 500 !important;
+}
+
+/* 卡片样式 */
+.el-card {
+  border-radius: 8px !important;
+  overflow: hidden;
+  transition: all 0.3s;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.el-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+/* 按钮样式 */
+.el-button {
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  transition: all 0.3s !important;
+}
+
+.el-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3) !important;
+}
+
+/* 表格样式 */
+.el-table {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.el-table th {
+  background-color: #f5f7fa !important;
+  color: #606266 !important;
+  font-weight: 600 !important;
+  padding: 12px 0 !important;
+}
+
+/* 标签样式 */
+.el-tag {
+  border-radius: 4px !important;
+  padding: 0 8px !important;
+}
+
+/* 下拉菜单 */
+.el-dropdown-menu {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.el-dropdown-menu__item {
+  padding: 10px 20px !important;
+}
+
+.el-dropdown-menu__item:hover {
+  background-color: #ecf5ff !important;
+}
 </style> 

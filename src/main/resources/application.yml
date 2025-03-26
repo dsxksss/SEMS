@@ -18,8 +18,8 @@ spring:
 
 server:
   port: 25466
-  servlet:
-    context-path: /api
+  # servlet:
+  #   context-path: /api
 
 # JWT配置
 jwt:
