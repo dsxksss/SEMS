@@ -157,35 +157,12 @@ const roleRules = {
 const fetchRoleList = async () => {
   loading.value = true;
   try {
-    console.log('开始获取角色列表...');
     // 调用API获取角色列表
     const roles = await roleAPI.getAllRoles();
-    console.log('获取角色列表结果:', roles);
-    roleList.value = roles || [];
+    roleList.value = roles;
   } catch (error) {
     console.error('获取角色列表失败', error);
-    ElMessage.error('获取角色列表失败，使用本地缓存数据');
-    // 如果API失败，使用默认角色
-    roleList.value = [
-      {
-        id: 1,
-        name: 'ROLE_ADMIN',
-        displayName: '管理员',
-        description: '系统管理员，拥有所有权限',
-        permissions: ['*'],
-        createdAt: '2023-01-01 00:00:00',
-        isSystem: true
-      },
-      {
-        id: 2,
-        name: 'ROLE_USER',
-        displayName: '普通用户',
-        description: '普通用户，具有基本权限',
-        permissions: ['event:view', 'registration:view', 'announcement:view'],
-        createdAt: '2023-01-01 00:00:00',
-        isSystem: true
-      }
-    ];
+    ElMessage.error('获取角色列表失败，请稍后重试');
   } finally {
     loading.value = false;
   }

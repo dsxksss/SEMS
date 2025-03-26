@@ -199,6 +199,31 @@ html, body, #app {
   font-weight: 500 !important;
   border-radius: 4px !important;
   transition: all 0.3s !important;
+  background-color: #fff !important;
+}
+
+.el-button--primary {
+  background-color: #409EFF !important;
+  color: #fff !important;
+  border-color: #409EFF !important;
+}
+
+.el-button--success {
+  background-color: #67C23A !important;
+  color: #fff !important;
+  border-color: #67C23A !important;
+}
+
+.el-button--warning {
+  background-color: #E6A23C !important;
+  color: #fff !important;
+  border-color: #E6A23C !important;
+}
+
+.el-button--danger {
+  background-color: #F56C6C !important;
+  color: #fff !important;
+  border-color: #F56C6C !important;
 }
 
 .el-button--primary:hover {

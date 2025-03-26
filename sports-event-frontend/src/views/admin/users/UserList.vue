@@ -3,10 +3,10 @@
     <div class="filter-container">
       <el-form :inline="true" :model="filterForm" class="form-inline">
         <el-form-item label="用户名">
-          <el-input v-model="filterForm.username" placeholder="输入用户名搜索" clearable />
+          <el-input v-model="filterForm.username" placeholder="输入用户名搜索" clearable class="filter-input" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="filterForm.role" placeholder="选择角色" clearable>
+          <el-select v-model="filterForm.role" placeholder="选择角色" clearable class="filter-select">
             <el-option label="管理员" value="ROLE_ADMIN" />
             <el-option label="普通用户" value="ROLE_USER" />
             <el-option label="运动员" value="ROLE_ATHLETE" />
@@ -14,7 +14,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
+          <el-select v-model="filterForm.status" placeholder="选择状态" clearable class="filter-select">
             <el-option label="激活" value="active" />
             <el-option label="禁用" value="disabled" />
           </el-select>
@@ -37,11 +37,13 @@
         :data="userList"
         border
         style="width: 100%"
+        fit
+        class="user-table"
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="username" label="用户名" width="150" />
-        <el-table-column prop="email" label="邮箱" width="220" />
-        <el-table-column prop="roles" label="角色" width="200">
+        <el-table-column prop="username" label="用户名" min-width="150" />
+        <el-table-column prop="email" label="邮箱" min-width="220" />
+        <el-table-column prop="roles" label="角色" min-width="200">
           <template #default="scope">
             <el-tag
               v-for="role in scope.row.roles"
@@ -53,34 +55,31 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="注册时间" width="180" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="createTime" label="注册时间" min-width="180" />
+        <el-table-column prop="status" label="状态" min-width="100">
           <template #default="scope">
             <el-tag :type="scope.row.status === 'active' ? 'success' : 'danger'">
               {{ scope.row.status === 'active' ? '激活' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="220">
+        <el-table-column label="操作" fixed="right" min-width="220">
           <template #default="scope">
             <el-button
               size="small"
               type="primary"
               @click="handleEdit(scope.row)"
-              >编辑</el-button
-            >
+            >编辑</el-button>
             <el-button
               size="small"
               :type="scope.row.status === 'active' ? 'danger' : 'success'"
               @click="handleToggleStatus(scope.row)"
-              >{{ scope.row.status === 'active' ? '禁用' : '启用' }}</el-button
-            >
+            >{{ scope.row.status === 'active' ? '禁用' : '启用' }}</el-button>
             <el-button
               size="small"
               type="danger"
               @click="handleDelete(scope.row)"
-              >删除</el-button
-            >
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -111,10 +110,10 @@
         label-width="100px"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="userForm.username" placeholder="请输入用户名" />
+          <el-input v-model="userForm.username" placeholder="请输入用户名" id="username" />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" id="email" />
         </el-form-item>
         <el-form-item label="密码" prop="password" v-if="dialogType === 'add'">
           <el-input
@@ -122,10 +121,11 @@
             type="password"
             placeholder="请输入密码"
             show-password
+            id="password"
           />
         </el-form-item>
         <el-form-item label="角色" prop="roles">
-          <el-checkbox-group v-model="userForm.roles">
+          <el-checkbox-group v-model="userForm.roles" id="roles">
             <el-checkbox label="ROLE_ADMIN">管理员</el-checkbox>
             <el-checkbox label="ROLE_USER">普通用户</el-checkbox>
             <el-checkbox label="ROLE_ATHLETE">运动员</el-checkbox>
@@ -133,7 +133,7 @@
           </el-checkbox-group>
         </el-form-item>
         <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="userForm.status">
+          <el-radio-group v-model="userForm.status" id="status">
             <el-radio label="active">激活</el-radio>
             <el-radio label="disabled">禁用</el-radio>
           </el-radio-group>
@@ -154,6 +154,14 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { userAPI } from '../../../api/userAPI';
 import type { User } from '../../../api/authAPI';
+import dayjs from 'dayjs';
+
+// 扩展User类型，添加status和createdAt字段
+interface ExtendedUser extends User {
+  status: 'active' | 'disabled';
+  createdAt?: string;
+  createTime?: string;
+}
 
 // 定义列表过滤表单
 const filterForm = reactive({
@@ -163,7 +171,7 @@ const filterForm = reactive({
 });
 
 // 用户列表数据
-const userList = ref<User[]>([]);
+const userList = ref<ExtendedUser[]>([]);
 const loading = ref(false);
 const total = ref(0);
 const pageSize = ref(10);
@@ -179,7 +187,7 @@ const userForm = reactive({
   email: '',
   password: '',
   roles: [] as string[],
-  status: 'active'
+  status: 'active' as 'active' | 'disabled'
 });
 
 // 表单验证规则
@@ -209,12 +217,15 @@ const fetchUserList = async () => {
     // 处理筛选
     let filteredUsers = response.filter(user => {
       let matches = true;
+      // 用户名筛选，不区分大小写
       if (filterForm.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
         matches = false;
       }
+      // 角色筛选
       if (filterForm.role && !user.roles.includes(filterForm.role)) {
         matches = false;
       }
+      // 状态筛选
       if (filterForm.status && user.status !== filterForm.status) {
         matches = false;
       }
@@ -224,10 +235,13 @@ const fetchUserList = async () => {
     // 计算总数
     total.value = filteredUsers.length;
     
-    // 分页
+    // 分页并格式化数据
     const startIndex = (currentPage.value - 1) * pageSize.value;
     const endIndex = startIndex + pageSize.value;
-    userList.value = filteredUsers.slice(startIndex, endIndex);
+    userList.value = filteredUsers.slice(startIndex, endIndex).map(user => ({
+      ...user,
+      createTime: user.createdAt ? dayjs(user.createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知'
+    }));
     
   } catch (error) {
     console.error('获取用户列表失败', error);
@@ -258,7 +272,7 @@ const handleAddUser = () => {
 };
 
 // 编辑用户
-const handleEdit = (row: User) => {
+const handleEdit = (row: ExtendedUser) => {
   dialogType.value = 'edit';
   userForm.id = row.id;
   userForm.username = row.username;
@@ -270,7 +284,7 @@ const handleEdit = (row: User) => {
 };
 
 // 启用/禁用用户
-const handleToggleStatus = (row: User) => {
+const handleToggleStatus = (row: ExtendedUser) => {
   const newStatus = row.status === 'active' ? 'disabled' : 'active';
   const actionText = newStatus === 'active' ? '启用' : '禁用';
   
@@ -286,7 +300,12 @@ const handleToggleStatus = (row: User) => {
     .then(async () => {
       try {
         // 调用API更新用户状态
-        await userAPI.updateUser(row.id, { status: newStatus });
+        await userAPI.updateUser(row.id, { 
+          status: newStatus,
+          username: row.username,
+          email: row.email,
+          roles: row.roles
+        });
         
         ElMessage.success(`${actionText}用户成功`);
         fetchUserList(); // 重新获取列表
@@ -301,7 +320,7 @@ const handleToggleStatus = (row: User) => {
 };
 
 // 删除用户
-const handleDelete = (row: User) => {
+const handleDelete = (row: ExtendedUser) => {
   ElMessageBox.confirm(
     `确认要删除用户 "${row.username}" 吗？此操作不可恢复！`,
     '确认删除',
@@ -338,18 +357,32 @@ const saveUser = async () => {
     if (valid) {
       try {
         if (dialogType.value === 'add') {
-          // 添加用户 - 注意：这里假设后端API支持这个操作
-          // 这个方法可能需要在userAPI中添加
-          await userAPI.updateUser(0, {
+          // 添加用户 - 创建新用户
+          const result = await userAPI.createUser({
             username: userForm.username,
             email: userForm.email,
             password: userForm.password,
             roles: userForm.roles,
             status: userForm.status
           });
-          ElMessage.success('添加用户成功');
+          
+          // 检查返回的消息，可能是成功或者错误信息
+          if (result && result.message) {
+            if (result.message.includes('successfully')) {
+              ElMessage.success('添加用户成功');
+              dialogVisible.value = false;
+              fetchUserList(); // 刷新用户列表
+            } else {
+              // 处理后端返回的错误信息
+              ElMessage.error(`添加用户失败: ${result.message}`);
+            }
+          } else {
+            ElMessage.success('添加用户成功');
+            dialogVisible.value = false;
+            fetchUserList(); // 刷新用户列表
+          }
         } else {
-          // 编辑用户
+          // 编辑用户 - 确保传递所有必要字段
           await userAPI.updateUser(userForm.id, {
             username: userForm.username,
             email: userForm.email,
@@ -357,12 +390,16 @@ const saveUser = async () => {
             status: userForm.status
           });
           ElMessage.success('更新用户成功');
+          dialogVisible.value = false;
+          fetchUserList(); // 刷新用户列表
         }
-        dialogVisible.value = false;
-        fetchUserList(); // 刷新用户列表
-      } catch (error) {
+      } catch (error: any) {
         console.error('保存用户失败', error);
-        ElMessage.error('保存用户失败，请重试');
+        // 显示详细的错误信息，如果有的话
+        const errorMsg = error.response && error.response.data && error.response.data.message 
+          ? error.response.data.message 
+          : '保存用户失败，请重试';
+        ElMessage.error(errorMsg);
       }
     } else {
       return false;
@@ -431,10 +468,22 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.filter-input,
+.filter-select {
+  width: 200px;
+}
+
 .table-container {
   background-color: #fff;
   padding: 20px;
   border-radius: 4px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.user-table {
+  width: 100%;
+  table-layout: auto;
 }
 
 .table-header {

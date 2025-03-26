@@ -16,36 +16,8 @@ export const roleAPI = {
    * 获取所有角色
    */
   getAllRoles: async () => {
-    try {
-      console.log('获取所有角色列表...');
-      const response = await apiClient.get<Role[]>('/roles');
-      console.log('获取角色列表成功:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('获取角色列表失败:', error);
-      // 返回模拟数据，避免系统崩溃
-      console.warn('使用模拟角色数据作为备用');
-      return [
-        {
-          id: 1,
-          name: 'ROLE_ADMIN',
-          displayName: '管理员',
-          description: '系统管理员，拥有所有权限',
-          permissions: ['*'],
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        },
-        {
-          id: 2,
-          name: 'ROLE_USER',
-          displayName: '普通用户',
-          description: '普通用户，具有基本权限',
-          permissions: ['event:view', 'registration:view', 'announcement:view'],
-          createdAt: '2023-01-01 00:00:00',
-          isSystem: true
-        }
-      ];
-    }
+    const response = await apiClient.get<Role[]>('/roles');
+    return response.data;
   },
 
   /**

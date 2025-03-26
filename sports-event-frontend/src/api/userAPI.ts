@@ -1,5 +1,12 @@
 import apiClient from './axios';
 import type { User } from './authAPI';
+import { authAPI } from './authAPI';
+
+// 扩展User类型，添加status字段
+export interface ExtendedUser extends User {
+  status?: string;
+  createdAt?: string;
+}
 
 export const userAPI = {
   /**
@@ -33,7 +40,7 @@ export const userAPI = {
    * 管理员: 获取所有用户
    */
   getAllUsers: async () => {
-    const response = await apiClient.get<User[]>('/users');
+    const response = await apiClient.get<ExtendedUser[]>('/users');
     return response.data;
   },
 
@@ -41,15 +48,67 @@ export const userAPI = {
    * 管理员: 获取用户详情
    */
   getUserById: async (id: number) => {
-    const response = await apiClient.get<User>(`/users/${id}`);
+    const response = await apiClient.get<ExtendedUser>(`/users/${id}`);
     return response.data;
+  },
+
+  /**
+   * 管理员: 创建用户
+   */
+  createUser: async (userData: {
+    username: string;
+    email: string;
+    password: string;
+    roles: string[];
+    status: string;
+  }) => {
+    // 将前端的roles数组格式转换为后端需要的格式
+    const roleNames = userData.roles.map(role => {
+      // 从'ROLE_ADMIN'格式转换为'admin'格式
+      return role.replace('ROLE_', '').toLowerCase();
+    });
+    
+    // 使用authAPI的register方法创建用户
+    const response = await authAPI.register({
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
+      roles: roleNames
+    });
+    
+    // 如果成功创建用户并需要设置状态，进行额外的API调用
+    if (response && response.id && userData.status) {
+      try {
+        await apiClient.put(`/users/${response.id}`, {
+          status: userData.status
+        });
+      } catch (error) {
+        console.error('设置用户状态失败', error);
+      }
+    }
+    
+    return response;
   },
 
   /**
    * 管理员: 更新用户信息
    */
-  updateUser: async (id: number, userData: Partial<User>) => {
-    const response = await apiClient.put<User>(`/users/${id}`, userData);
+  updateUser: async (id: number, userData: Partial<ExtendedUser>) => {
+    // 处理角色数据，如果存在则转换格式
+    let updateData = {...userData};
+    
+    if (userData.roles) {
+      // 确保将roles字段正确传递给后端
+      // 某些后端API可能需要转换角色格式
+      const roleNames = userData.roles.map(role => {
+        // 如果需要转换角色格式，取消下面的注释
+        // return role.replace('ROLE_', '').toLowerCase();
+        return role;
+      });
+      updateData.roles = roleNames;
+    }
+    
+    const response = await apiClient.put<ExtendedUser>(`/users/${id}`, updateData);
     return response.data;
   },
 

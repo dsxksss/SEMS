@@ -17,11 +17,11 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
-            <el-option label="未开始" value="NOT_STARTED" />
+            <el-option label="未开始" value="UPCOMING" />
             <el-option label="报名中" value="REGISTRATION" />
-            <el-option label="进行中" value="IN_PROGRESS" />
-            <el-option label="已结束" value="ENDED" />
-            <el-option label="已取消" value="CANCELED" />
+            <el-option label="进行中" value="ONGOING" />
+            <el-option label="已结束" value="COMPLETED" />
+            <el-option label="已取消" value="CANCELLED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -67,37 +67,31 @@
               size="small"
               type="primary"
               @click="handleView(scope.row)"
-              >详情</el-button>
+            >详情</el-button>
             <el-button
               v-if="canEdit(scope.row)"
               size="small"
               type="success"
               @click="handleEdit(scope.row)"
-              >编辑</el-button>
+            >编辑</el-button>
             <el-button
-              v-if="scope.row.status === 'NOT_STARTED'"
+              v-if="scope.row.status === 'UPCOMING'"
               size="small"
               type="info"
-              @click="handleChangeStatus(scope.row, 'REGISTRATION')"
-              >开放报名</el-button>
+              @click="handleChangeStatus(scope.row, 'ONGOING')"
+            >开始比赛</el-button>
             <el-button
-              v-if="scope.row.status === 'REGISTRATION'"
-              size="small"
-              type="warning"
-              @click="handleChangeStatus(scope.row, 'IN_PROGRESS')"
-              >开始比赛</el-button>
-            <el-button
-              v-if="scope.row.status === 'IN_PROGRESS'"
+              v-if="scope.row.status === 'ONGOING'"
               size="small"
               type="danger"
-              @click="handleChangeStatus(scope.row, 'ENDED')"
-              >结束比赛</el-button>
+              @click="handleChangeStatus(scope.row, 'COMPLETED')"
+            >结束比赛</el-button>
             <el-button
               v-if="canCancel(scope.row)"
               size="small"
               type="danger"
-              @click="handleChangeStatus(scope.row, 'CANCELED')"
-              >取消赛事</el-button>
+              @click="handleChangeStatus(scope.row, 'CANCELLED')"
+            >取消赛事</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -151,11 +145,11 @@
             v-if="canEdit(currentEvent)"
             type="primary"
             @click="handleEdit(currentEvent)"
-            >编辑赛事</el-button>
+          >编辑赛事</el-button>
           <el-button
             type="info"
             @click="$router.push(`/admin/events/${currentEvent.id}/participants`)"
-            >查看参与者</el-button>
+          >查看参与者</el-button>
         </div>
       </div>
     </el-dialog>
@@ -246,11 +240,11 @@ const statusChangeMessage = computed(() => {
   switch (targetStatus.value) {
     case 'REGISTRATION':
       return `确定要开放赛事 "${statusChangeEvent.value.name}" 的报名吗？开放后，用户可以进行报名。`;
-    case 'IN_PROGRESS':
+    case 'ONGOING':
       return `确定要将赛事 "${statusChangeEvent.value.name}" 标记为进行中吗？这将关闭报名通道。`;
-    case 'ENDED':
+    case 'COMPLETED':
       return `确定要将赛事 "${statusChangeEvent.value.name}" 标记为已结束吗？`;
-    case 'CANCELED':
+    case 'CANCELLED':
       return `确定要取消赛事 "${statusChangeEvent.value.name}" 吗？取消后无法恢复。`;
     default:
       return `确定要修改赛事 "${statusChangeEvent.value.name}" 的状态吗？`;
@@ -345,15 +339,15 @@ const resetForm = () => {
 // 格式化状态显示
 const formatStatus = (status: string) => {
   switch (status) {
-    case 'NOT_STARTED':
+    case 'UPCOMING':
       return '未开始';
     case 'REGISTRATION':
       return '报名中';
-    case 'IN_PROGRESS':
+    case 'ONGOING':
       return '进行中';
-    case 'ENDED':
+    case 'COMPLETED':
       return '已结束';
-    case 'CANCELED':
+    case 'CANCELLED':
       return '已取消';
     default:
       return status;
@@ -363,15 +357,15 @@ const formatStatus = (status: string) => {
 // 获取状态对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
-    case 'NOT_STARTED':
+    case 'UPCOMING':
       return 'info';
     case 'REGISTRATION':
       return 'warning';
-    case 'IN_PROGRESS':
+    case 'ONGOING':
       return 'success';
-    case 'ENDED':
+    case 'COMPLETED':
       return 'danger';
-    case 'CANCELED':
+    case 'CANCELLED':
       return '';
     default:
       return 'info';
@@ -391,12 +385,12 @@ const handleEdit = (row: Event) => {
 
 // 判断赛事是否可编辑
 const canEdit = (event: Event) => {
-  return ['NOT_STARTED', 'REGISTRATION'].includes(event.status);
+  return ['UPCOMING', 'REGISTRATION'].includes(event.status);
 };
 
 // 判断赛事是否可取消
 const canCancel = (event: Event) => {
-  return ['NOT_STARTED', 'REGISTRATION'].includes(event.status);
+  return ['UPCOMING', 'REGISTRATION'].includes(event.status);
 };
 
 // 修改赛事状态
@@ -411,11 +405,17 @@ const confirmStatusChange = async () => {
   if (!statusChangeEvent.value) return;
   
   try {
-    // 实际应用中调用API更新赛事状态
-    // await eventsAPI.updateEventStatus(statusChangeEvent.value.id, targetStatus.value);
+    // 根据不同的状态调用不同的API
+    if (targetStatus.value === 'CANCELLED') {
+      // 取消赛事
+      await eventsAPI.cancelEvent(statusChangeEvent.value.id);
+    } else {
+      // 更新赛事状态
+      await eventsAPI.updateEvent(statusChangeEvent.value.id, { 
+        status: targetStatus.value
+      });
+    }
     
-    // 模拟成功
-    statusChangeEvent.value.status = targetStatus.value;
     ElMessage.success('赛事状态更新成功');
     statusDialogVisible.value = false;
     

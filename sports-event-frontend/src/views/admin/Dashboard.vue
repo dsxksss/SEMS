@@ -217,16 +217,16 @@ const announcements = ref<Announcement[]>([]);
 const fetchStats = async () => {
   loading.value.stats = true;
   try {
-    // 用户总数
+    // 获取用户总数
     const users = await userAPI.getAllUsers();
     stats.value.userCount = users.length;
     
-    // 赛事相关数据
+    // 获取赛事相关数据
     const events = await eventsAPI.getAllEvents();
     stats.value.eventCount = events.length;
     stats.value.completedEventCount = events.filter(e => e.status === 'COMPLETED').length;
     
-    // 报名总数
+    // 获取报名总数
     const registrations = await registrationAPI.getAllRegistrations();
     stats.value.registrationCount = registrations.length;
   } catch (error) {
@@ -242,13 +242,17 @@ const fetchRecentEvents = async () => {
   loading.value.events = true;
   try {
     const events = await eventsAPI.getAllEvents();
-    recentEvents.value = events.slice(0, 5).map(event => ({
-      id: event.id,
-      name: event.name,
-      categoryName: event.category.name,
-      startDate: dayjs(event.startTime).format('YYYY-MM-DD'),
-      status: event.status
-    }));
+    // 按创建时间排序并获取最近5条记录
+    recentEvents.value = events
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(event => ({
+        id: event.id,
+        name: event.name,
+        categoryName: event.category?.name || '未分类',
+        startDate: dayjs(event.startTime).format('YYYY-MM-DD'),
+        status: event.status
+      }));
   } catch (error) {
     console.error('获取最近赛事失败:', error);
     ElMessage.error('获取最近赛事失败');
@@ -262,13 +266,17 @@ const fetchRecentRegistrations = async () => {
   loading.value.registrations = true;
   try {
     const registrations = await registrationAPI.getAllRegistrations();
-    recentRegistrations.value = registrations.slice(0, 5).map(reg => ({
-      id: reg.id,
-      username: reg.user.username,
-      eventName: reg.event.name,
-      registrationDate: dayjs(reg.createdAt).format('YYYY-MM-DD'),
-      status: reg.status
-    }));
+    // 按创建时间排序并获取最近5条记录
+    recentRegistrations.value = registrations
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(reg => ({
+        id: reg.id,
+        username: reg.user?.username || '未知用户',
+        eventName: reg.event?.name || '未知赛事',
+        registrationDate: dayjs(reg.createdAt).format('YYYY-MM-DD'),
+        status: reg.status
+      }));
   } catch (error) {
     console.error('获取最近报名失败:', error);
     ElMessage.error('获取最近报名失败');
@@ -282,13 +290,17 @@ const fetchAnnouncements = async () => {
   loading.value.announcements = true;
   try {
     const latestAnnouncements = await announcementAPI.getAllAnnouncements();
-    announcements.value = latestAnnouncements.slice(0, 5).map(ann => ({
-      id: ann.id,
-      title: ann.title,
-      content: ann.content,
-      createdDate: dayjs(ann.createdAt).format('YYYY-MM-DD'),
-      authorName: ann.author && ann.author.username ? ann.author.username : '未知用户'
-    }));
+    // 按创建时间排序并获取最近5条记录
+    announcements.value = latestAnnouncements
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(ann => ({
+        id: ann.id,
+        title: ann.title,
+        content: ann.content,
+        createdDate: dayjs(ann.createdAt).format('YYYY-MM-DD'),
+        authorName: ann.author?.username || '未知用户'
+      }));
   } catch (error) {
     console.error('获取系统公告失败:', error);
     ElMessage.error('获取系统公告失败');
