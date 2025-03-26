@@ -1,5 +1,5 @@
 import apiClient from './axios';
-import type { EventCategory } from './types';
+import type { EventCategory } from '@/types/event';
 
 export const categoryAPI = {
   /**

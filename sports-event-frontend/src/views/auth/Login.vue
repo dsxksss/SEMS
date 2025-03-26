@@ -51,9 +51,15 @@ const handleLogin = async (formEl: any) => {
           // 成功登录，显示成功消息
           ElMessage.success('登录成功');
           
-          // 如果有重定向地址，则跳转到该地址
-          const redirectPath = route.query.redirect as string || '/';
-          router.replace(redirectPath);
+          // 如果是管理员，直接跳转到管理后台
+          if (authStore.isAdmin) {
+            console.log('是管理员，跳转到管理后台');
+            router.push('/admin/dashboard');
+          } else {
+            // 否则，如果有重定向地址，则跳转到该地址，否则跳转到首页
+            const redirectPath = route.query.redirect as string || '/';
+            router.push(redirectPath);
+          }
         } else {
           // 登录失败，显示错误消息
           ElMessage.error(authStore.error || '登录失败，请检查用户名和密码');

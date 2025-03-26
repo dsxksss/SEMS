@@ -20,8 +20,15 @@ export const useAuthStore = defineStore('auth', {
   }),
   
   getters: {
-    isAdmin: (state) => state.user?.roles.includes('ROLE_ADMIN') || false,
-    isUser: (state) => state.user?.roles.includes('ROLE_USER') || false
+    // 检查用户是否有管理员角色
+    isAdmin: (state) => {
+      if (!state.user || !state.user.roles) return false;
+      return state.user.roles.includes('ROLE_ADMIN');
+    },
+    isUser: (state) => {
+      if (!state.user || !state.user.roles) return false;
+      return state.user.roles.includes('ROLE_USER');
+    }
   },
   
   actions: {
@@ -36,8 +43,13 @@ export const useAuthStore = defineStore('auth', {
           this.user = user;
           this.token = token;
           this.isAuthenticated = true;
+          
+          console.log('已恢复用户状态:', this.user);
+          console.log('用户角色:', this.user.roles);
+          console.log('是否管理员:', this.isAdmin);
         } catch (error) {
           // 解析失败，清除存储
+          console.error('解析用户数据失败:', error);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
@@ -50,7 +62,9 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
+        console.log('正在登录...');
         const response = await authAPI.login(credentials);
+        console.log('登录响应:', response);
         
         // 保存认证信息
         this.user = {
@@ -66,9 +80,24 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(this.user));
         
+        console.log('登录成功, 用户信息:', this.user);
+        console.log('用户角色:', this.user.roles);
+        console.log('是否管理员:', this.isAdmin);
+        
+        // 登录成功，如果是管理员，直接重定向到管理后台
+        if (this.isAdmin) {
+          console.log('用户是管理员，准备跳转到管理后台...');
+          // 确保异步完成后再跳转
+          setTimeout(() => {
+            router.push('/admin/dashboard');
+          }, 100);
+        }
+        
         // 登录成功
         return true;
       } catch (error: any) {
+        console.error('登录失败:', error);
+        
         // 处理具体的错误类型
         if (error.response) {
           const status = error.response.status;
