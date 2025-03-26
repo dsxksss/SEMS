@@ -1,15 +1,15 @@
 <template>
-  <div class="admin-layout">
-    <el-container class="container">
+  <div class="min-h-screen bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
       <!-- 侧边栏 -->
-      <el-aside width="220px" class="sidebar">
-        <div class="logo">
-          <h2>体育赛事管理系统</h2>
+      <div class="w-64 bg-[#304156] flex-shrink-0">
+        <div class="py-4 px-4 bg-[#263445] text-white">
+          <h2 class="text-base font-medium">体育赛事管理系统</h2>
         </div>
         <el-menu
           router
           :default-active="$route.path"
-          class="el-menu-vertical"
+          class="el-menu-vertical border-none h-[calc(100%-4rem)]"
           background-color="#304156"
           text-color="#bfcbd9"
           active-text-color="#409EFF"
@@ -63,19 +63,20 @@
             <span>公告管理</span>
           </el-menu-item>
         </el-menu>
-      </el-aside>
-      
-      <!-- 主内容区 -->
-      <el-container class="main-container">
-        <el-header class="header">
-          <div class="header-left">
-            <el-icon class="toggle-sidebar"><el-icon-fold /></el-icon>
+      </div>
+
+      <!-- 主要内容区 -->
+      <div class="flex flex-col flex-1 overflow-hidden">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white border-b border-gray-200 shadow-sm h-16 flex items-center px-6 justify-between">
+          <div class="flex items-center">
+            <el-icon class="text-xl cursor-pointer mr-4"><el-icon-fold /></el-icon>
           </div>
-          <div class="header-right">
+          <div class="flex items-center">
             <el-dropdown>
-              <span class="user-dropdown">
+              <span class="flex items-center cursor-pointer text-sm">
                 {{ authStore.user?.username }}
-                <el-icon><el-icon-arrow-down /></el-icon>
+                <el-icon class="ml-1"><el-icon-arrow-down /></el-icon>
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -85,25 +86,32 @@
               </template>
             </el-dropdown>
           </div>
-        </el-header>
-        <el-main class="main-content">
+        </header>
+
+        <!-- 内容区域 -->
+        <main class="flex-1 overflow-y-auto p-6 bg-gray-100">
           <!-- 内容页头部 -->
-          <div class="page-header" v-if="$route.meta.title">
-            <h3>{{ $route.meta.title }}</h3>
+          <div v-if="$route.meta.title" class="bg-white rounded-md p-4 mb-6 flex justify-between items-center shadow-sm">
+            <h3 class="text-lg font-medium text-gray-800">{{ $route.meta.title }}</h3>
             <el-breadcrumb separator="/">
               <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
               <el-breadcrumb-item v-if="$route.meta.parent">{{ $route.meta.parent }}</el-breadcrumb-item>
               <el-breadcrumb-item>{{ $route.meta.title }}</el-breadcrumb-item>
             </el-breadcrumb>
           </div>
-          <!-- 路由视图 -->
-          <router-view></router-view>
-        </el-main>
-        <el-footer class="footer">
+          
+          <!-- 路由内容 -->
+          <keep-alive>
+            <router-view></router-view>
+          </keep-alive>
+        </main>
+
+        <!-- 底部 -->
+        <footer class="bg-white border-t border-gray-200 py-3 px-6 text-center text-xs text-gray-500">
           &copy; 2023 体育赛事管理系统 - 管理员后台
-        </el-footer>
-      </el-container>
-    </el-container>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,119 +123,16 @@ const authStore = useAuthStore();
 const router = useRouter();
 </script>
 
-<style scoped>
-.admin-layout {
-  height: 100vh;
-  overflow: hidden;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+<style>
+/* 覆盖Element Plus菜单样式 */
+.el-menu {
+  border-right: none !important;
 }
 
-.container {
+/* 确保页面占满整个视口 */
+html, body, #app {
   height: 100%;
-  width: 100%;
-  display: flex;
-}
-
-.main-container {
-  flex: 1;
-  width: 100vw;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.sidebar {
-  background-color: #304156;
-  color: #bfcbd9;
-  height: 100%;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-.logo {
-  height: 60px;
-  line-height: 60px;
-  text-align: center;
-  background-color: #263445;
-  color: #fff;
-}
-
-.logo h2 {
-  font-size: 16px;
   margin: 0;
-  font-weight: 500;
-}
-
-.header {
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-}
-
-.toggle-sidebar {
-  padding: 0 15px;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.user-dropdown {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-}
-
-.main-content {
-  padding: 20px;
-  background-color: #f0f2f5;
-  overflow-y: auto;
-  flex: 1;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.page-header {
-  background-color: #fff;
-  padding: 16px 24px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.footer {
-  height: 40px;
-  line-height: 40px;
-  text-align: center;
-  background-color: #fff;
-  color: #606266;
-  font-size: 12px;
-  border-top: 1px solid #e6e6e6;
+  padding: 0;
 }
 </style> 

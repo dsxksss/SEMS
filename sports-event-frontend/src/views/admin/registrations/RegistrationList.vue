@@ -1,190 +1,187 @@
 <template>
-  <admin-layout>
-    <div class="registration-list">
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="form-inline">
-          <el-form-item label="运动员姓名">
-            <el-input v-model="filterForm.athleteName" placeholder="输入运动员姓名搜索" clearable />
-          </el-form-item>
-          <el-form-item label="赛事名称">
-            <el-select v-model="filterForm.eventId" placeholder="选择赛事" clearable style="width: 220px">
-              <el-option
-                v-for="event in events"
-                :key="event.id"
-                :label="event.name"
-                :value="event.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
-              <el-option label="待审核" value="PENDING" />
-              <el-option label="已通过" value="APPROVED" />
-              <el-option label="已拒绝" value="REJECTED" />
-              <el-option label="已取消" value="CANCELED" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="searchRegistrations">搜索</el-button>
-            <el-button @click="resetForm">重置</el-button>
+  <div class="registration-list">
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="form-inline">
+        <el-form-item label="运动员姓名">
+          <el-input v-model="filterForm.athleteName" placeholder="输入运动员姓名搜索" clearable />
+        </el-form-item>
+        <el-form-item label="赛事名称">
+          <el-select v-model="filterForm.eventId" placeholder="选择赛事" clearable style="width: 220px">
+            <el-option
+              v-for="event in events"
+              :key="event.id"
+              :label="event.name"
+              :value="event.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="已拒绝" value="REJECTED" />
+            <el-option label="已取消" value="CANCELED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchRegistrations">搜索</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>运动员报名列表</h3>
+        <div class="table-actions">
+          <el-button type="primary" @click="exportRegistrations">导出报名数据</el-button>
+        </div>
+      </div>
+
+      <el-table
+        v-loading="loading"
+        :data="registrationList"
+        border
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="athleteName" label="运动员姓名" width="120" />
+        <el-table-column prop="eventName" label="赛事名称" width="200" show-overflow-tooltip />
+        <el-table-column prop="gender" label="性别" width="80">
+          <template #default="scope">
+            {{ scope.row.gender === 'MALE' ? '男' : '女' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="phoneNumber" label="联系电话" width="130" />
+        <el-table-column prop="registrationTime" label="报名时间" width="180" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.status)">
+              {{ formatStatus(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="240">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleView(scope.row)"
+              >详情</el-button>
+            <el-button
+              v-if="scope.row.status === 'PENDING'"
+              size="small"
+              type="success"
+              @click="handleChangeStatus(scope.row, 'APPROVED')"
+              >通过</el-button>
+            <el-button
+              v-if="scope.row.status === 'PENDING'"
+              size="small"
+              type="danger"
+              @click="handleChangeStatus(scope.row, 'REJECTED')"
+              >拒绝</el-button>
+            <el-button
+              v-if="['PENDING', 'APPROVED'].includes(scope.row.status)"
+              size="small"
+              type="warning"
+              @click="handleChangeStatus(scope.row, 'CANCELED')"
+              >取消</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <el-dialog
+      title="报名详情"
+      v-model="detailDialogVisible"
+      width="700px"
+    >
+      <div v-if="currentRegistration" class="registration-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="运动员姓名">{{ currentRegistration.athleteName }}</el-descriptions-item>
+          <el-descriptions-item label="性别">{{ currentRegistration.gender === 'MALE' ? '男' : '女' }}</el-descriptions-item>
+          <el-descriptions-item label="赛事名称" :span="2">{{ currentRegistration.eventName }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentRegistration.phoneNumber }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ currentRegistration.email }}</el-descriptions-item>
+          <el-descriptions-item label="身份证号">{{ currentRegistration.idCard }}</el-descriptions-item>
+          <el-descriptions-item label="年龄">{{ currentRegistration.age }}</el-descriptions-item>
+          <el-descriptions-item label="报名时间">{{ currentRegistration.registrationTime }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(currentRegistration.status)">
+              {{ formatStatus(currentRegistration.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">
+            <div class="registration-remark">{{ currentRegistration.remark || '无' }}</div>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div class="detail-actions">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button
+            v-if="currentRegistration.status === 'PENDING'"
+            type="success"
+            @click="handleChangeStatus(currentRegistration, 'APPROVED')"
+            >通过</el-button>
+          <el-button
+            v-if="currentRegistration.status === 'PENDING'"
+            type="danger"
+            @click="handleChangeStatus(currentRegistration, 'REJECTED')"
+            >拒绝</el-button>
+          <el-button
+            v-if="['PENDING', 'APPROVED'].includes(currentRegistration.status)"
+            type="warning"
+            @click="handleChangeStatus(currentRegistration, 'CANCELED')"
+            >取消</el-button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 状态变更确认弹窗 -->
+    <el-dialog
+      :title="statusChangeTitle"
+      v-model="statusDialogVisible"
+      width="500px"
+    >
+      <div class="status-change-content">
+        <p>{{ statusChangeMessage }}</p>
+        <el-form v-if="targetStatus === 'REJECTED'" label-width="80px">
+          <el-form-item label="拒绝原因">
+            <el-input
+              v-model="rejectReason"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入拒绝原因"
+            />
           </el-form-item>
         </el-form>
       </div>
-
-      <div class="table-container">
-        <div class="table-header">
-          <h3>运动员报名列表</h3>
-          <div class="table-actions">
-            <el-button type="primary" @click="exportRegistrations">导出报名数据</el-button>
-          </div>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="registrationList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="athleteName" label="运动员姓名" width="120" />
-          <el-table-column prop="eventName" label="赛事名称" width="200" show-overflow-tooltip />
-          <el-table-column prop="gender" label="性别" width="80">
-            <template #default="scope">
-              {{ scope.row.gender === 'MALE' ? '男' : '女' }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="phoneNumber" label="联系电话" width="130" />
-          <el-table-column prop="registrationTime" label="报名时间" width="180" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="scope">
-              <el-tag :type="getStatusType(scope.row.status)">
-                {{ formatStatus(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" fixed="right" width="240">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleView(scope.row)"
-                >详情</el-button>
-              <el-button
-                v-if="scope.row.status === 'PENDING'"
-                size="small"
-                type="success"
-                @click="handleChangeStatus(scope.row, 'APPROVED')"
-                >通过</el-button>
-              <el-button
-                v-if="scope.row.status === 'PENDING'"
-                size="small"
-                type="danger"
-                @click="handleChangeStatus(scope.row, 'REJECTED')"
-                >拒绝</el-button>
-              <el-button
-                v-if="['PENDING', 'APPROVED'].includes(scope.row.status)"
-                size="small"
-                type="warning"
-                @click="handleChangeStatus(scope.row, 'CANCELED')"
-                >取消</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </div>
-
-      <!-- 详情弹窗 -->
-      <el-dialog
-        title="报名详情"
-        v-model="detailDialogVisible"
-        width="700px"
-      >
-        <div v-if="currentRegistration" class="registration-detail">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="运动员姓名">{{ currentRegistration.athleteName }}</el-descriptions-item>
-            <el-descriptions-item label="性别">{{ currentRegistration.gender === 'MALE' ? '男' : '女' }}</el-descriptions-item>
-            <el-descriptions-item label="赛事名称" :span="2">{{ currentRegistration.eventName }}</el-descriptions-item>
-            <el-descriptions-item label="联系电话">{{ currentRegistration.phoneNumber }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ currentRegistration.email }}</el-descriptions-item>
-            <el-descriptions-item label="身份证号">{{ currentRegistration.idCard }}</el-descriptions-item>
-            <el-descriptions-item label="年龄">{{ currentRegistration.age }}</el-descriptions-item>
-            <el-descriptions-item label="报名时间">{{ currentRegistration.registrationTime }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="getStatusType(currentRegistration.status)">
-                {{ formatStatus(currentRegistration.status) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="备注" :span="2">
-              <div class="registration-remark">{{ currentRegistration.remark || '无' }}</div>
-            </el-descriptions-item>
-          </el-descriptions>
-
-          <div class="detail-actions">
-            <el-button @click="detailDialogVisible = false">关闭</el-button>
-            <el-button
-              v-if="currentRegistration.status === 'PENDING'"
-              type="success"
-              @click="handleChangeStatus(currentRegistration, 'APPROVED')"
-              >通过</el-button>
-            <el-button
-              v-if="currentRegistration.status === 'PENDING'"
-              type="danger"
-              @click="handleChangeStatus(currentRegistration, 'REJECTED')"
-              >拒绝</el-button>
-            <el-button
-              v-if="['PENDING', 'APPROVED'].includes(currentRegistration.status)"
-              type="warning"
-              @click="handleChangeStatus(currentRegistration, 'CANCELED')"
-              >取消</el-button>
-          </div>
-        </div>
-      </el-dialog>
-
-      <!-- 状态变更确认弹窗 -->
-      <el-dialog
-        :title="statusChangeTitle"
-        v-model="statusDialogVisible"
-        width="500px"
-      >
-        <div class="status-change-content">
-          <p>{{ statusChangeMessage }}</p>
-          <el-form v-if="targetStatus === 'REJECTED'" label-width="80px">
-            <el-form-item label="拒绝原因">
-              <el-input
-                v-model="rejectReason"
-                type="textarea"
-                :rows="3"
-                placeholder="请输入拒绝原因"
-              />
-            </el-form-item>
-          </el-form>
-        </div>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="statusDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmStatusChange">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
-    </div>
-  </admin-layout>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="statusDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmStatusChange">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface Event {
   id: number;

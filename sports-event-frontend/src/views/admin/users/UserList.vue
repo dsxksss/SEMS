@@ -1,154 +1,152 @@
 <template>
-  <admin-layout>
-    <div class="user-list">
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="form-inline">
-          <el-form-item label="用户名">
-            <el-input v-model="filterForm.username" placeholder="输入用户名搜索" clearable />
-          </el-form-item>
-          <el-form-item label="角色">
-            <el-select v-model="filterForm.role" placeholder="选择角色" clearable>
-              <el-option label="管理员" value="ROLE_ADMIN" />
-              <el-option label="普通用户" value="ROLE_USER" />
-              <el-option label="运动员" value="ROLE_ATHLETE" />
-              <el-option label="观众" value="ROLE_SPECTATOR" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
-              <el-option label="激活" value="active" />
-              <el-option label="禁用" value="disabled" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="fetchUserList">搜索</el-button>
-            <el-button @click="resetForm">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="table-container">
-        <div class="table-header">
-          <h3>用户列表</h3>
-          <el-button type="primary" @click="handleAddUser">添加用户</el-button>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="userList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="username" label="用户名" width="150" />
-          <el-table-column prop="email" label="邮箱" width="220" />
-          <el-table-column prop="roles" label="角色" width="200">
-            <template #default="scope">
-              <el-tag
-                v-for="role in scope.row.roles"
-                :key="role"
-                :type="getRoleTagType(role)"
-                class="role-tag"
-              >
-                {{ formatRoleName(role) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="注册时间" width="180" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === 'active' ? 'success' : 'danger'">
-                {{ scope.row.status === 'active' ? '激活' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" fixed="right" width="220">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button
-              >
-              <el-button
-                size="small"
-                :type="scope.row.status === 'active' ? 'danger' : 'success'"
-                @click="handleToggleStatus(scope.row)"
-                >{{ scope.row.status === 'active' ? '禁用' : '启用' }}</el-button
-              >
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleDelete(scope.row)"
-                >删除</el-button
-              >
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </div>
-
-      <!-- 添加/编辑用户对话框 -->
-      <el-dialog
-        :title="dialogType === 'add' ? '添加用户' : '编辑用户'"
-        v-model="dialogVisible"
-        width="500px"
-      >
-        <el-form
-          :model="userForm"
-          :rules="userRules"
-          ref="userFormRef"
-          label-width="100px"
-        >
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="userForm.username" placeholder="请输入用户名" />
-          </el-form-item>
-          <el-form-item label="邮箱" prop="email">
-            <el-input v-model="userForm.email" placeholder="请输入邮箱" />
-          </el-form-item>
-          <el-form-item label="密码" prop="password" v-if="dialogType === 'add'">
-            <el-input
-              v-model="userForm.password"
-              type="password"
-              placeholder="请输入密码"
-              show-password
-            />
-          </el-form-item>
-          <el-form-item label="角色" prop="roles">
-            <el-checkbox-group v-model="userForm.roles">
-              <el-checkbox label="ROLE_ADMIN">管理员</el-checkbox>
-              <el-checkbox label="ROLE_USER">普通用户</el-checkbox>
-              <el-checkbox label="ROLE_ATHLETE">运动员</el-checkbox>
-              <el-checkbox label="ROLE_SPECTATOR">观众</el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-          <el-form-item label="状态" prop="status">
-            <el-radio-group v-model="userForm.status">
-              <el-radio label="active">激活</el-radio>
-              <el-radio label="disabled">禁用</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveUser">确定</el-button>
-          </span>
-        </template>
-      </el-dialog>
+  <div class="user-list">
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="form-inline">
+        <el-form-item label="用户名">
+          <el-input v-model="filterForm.username" placeholder="输入用户名搜索" clearable />
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="filterForm.role" placeholder="选择角色" clearable>
+            <el-option label="管理员" value="ROLE_ADMIN" />
+            <el-option label="普通用户" value="ROLE_USER" />
+            <el-option label="运动员" value="ROLE_ATHLETE" />
+            <el-option label="观众" value="ROLE_SPECTATOR" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
+            <el-option label="激活" value="active" />
+            <el-option label="禁用" value="disabled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="fetchUserList">搜索</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
-  </admin-layout>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>用户列表</h3>
+        <el-button type="primary" @click="handleAddUser">添加用户</el-button>
+      </div>
+
+      <el-table
+        v-loading="loading"
+        :data="userList"
+        border
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="username" label="用户名" width="150" />
+        <el-table-column prop="email" label="邮箱" width="220" />
+        <el-table-column prop="roles" label="角色" width="200">
+          <template #default="scope">
+            <el-tag
+              v-for="role in scope.row.roles"
+              :key="role"
+              :type="getRoleTagType(role)"
+              class="role-tag"
+            >
+              {{ formatRoleName(role) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="注册时间" width="180" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === 'active' ? 'success' : 'danger'">
+              {{ scope.row.status === 'active' ? '激活' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="220">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button
+            >
+            <el-button
+              size="small"
+              :type="scope.row.status === 'active' ? 'danger' : 'success'"
+              @click="handleToggleStatus(scope.row)"
+              >{{ scope.row.status === 'active' ? '禁用' : '启用' }}</el-button
+            >
+            <el-button
+              size="small"
+              type="danger"
+              @click="handleDelete(scope.row)"
+              >删除</el-button
+            >
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
+
+    <!-- 添加/编辑用户对话框 -->
+    <el-dialog
+      :title="dialogType === 'add' ? '添加用户' : '编辑用户'"
+      v-model="dialogVisible"
+      width="500px"
+    >
+      <el-form
+        :model="userForm"
+        :rules="userRules"
+        ref="userFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="userForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password" v-if="dialogType === 'add'">
+          <el-input
+            v-model="userForm.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="角色" prop="roles">
+          <el-checkbox-group v-model="userForm.roles">
+            <el-checkbox label="ROLE_ADMIN">管理员</el-checkbox>
+            <el-checkbox label="ROLE_USER">普通用户</el-checkbox>
+            <el-checkbox label="ROLE_ATHLETE">运动员</el-checkbox>
+            <el-checkbox label="ROLE_SPECTATOR">观众</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="userForm.status">
+            <el-radio label="active">激活</el-radio>
+            <el-radio label="disabled">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveUser">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -156,7 +154,6 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { userAPI } from '../../../api/userAPI';
 import type { User } from '../../../api/authAPI';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 // 定义列表过滤表单
 const filterForm = reactive({

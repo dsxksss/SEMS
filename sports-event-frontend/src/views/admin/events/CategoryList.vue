@@ -1,102 +1,100 @@
 <template>
-  <admin-layout>
-    <div class="category-list">
-      <div class="main-container">
-        <div class="header">
-          <h3>赛事分类管理</h3>
-          <el-button type="primary" @click="handleAddCategory">添加分类</el-button>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="categoryList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="name" label="分类名称" width="200" />
-          <el-table-column prop="description" label="描述" />
-          <el-table-column prop="status" label="状态" width="120">
-            <template #default="scope">
-              <el-tag :type="scope.row.isActive ? 'success' : 'danger'">
-                {{ scope.row.isActive ? '启用' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="eventCount" label="赛事数量" width="120" />
-          <el-table-column label="操作" fixed="right" width="200">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button>
-              <el-button
-                size="small"
-                :type="scope.row.isActive ? 'danger' : 'success'"
-                @click="handleToggleStatus(scope.row)"
-                >{{ scope.row.isActive ? '禁用' : '启用' }}</el-button>
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleDelete(scope.row)"
-                >删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
+  <div class="category-list">
+    <div class="main-container">
+      <div class="header">
+        <h3>赛事分类管理</h3>
+        <el-button type="primary" @click="handleAddCategory">添加分类</el-button>
       </div>
 
-      <!-- 添加/编辑分类对话框 -->
-      <el-dialog
-        :title="isEdit ? '编辑分类' : '添加分类'"
-        v-model="dialogVisible"
-        width="500px"
+      <el-table
+        v-loading="loading"
+        :data="categoryList"
+        border
+        style="width: 100%"
       >
-        <el-form
-          :model="categoryForm"
-          :rules="categoryRules"
-          ref="categoryFormRef"
-          label-width="100px"
-        >
-          <el-form-item label="分类名称" prop="name">
-            <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
-          </el-form-item>
-          <el-form-item label="描述" prop="description">
-            <el-input
-              v-model="categoryForm.description"
-              type="textarea"
-              rows="3"
-              placeholder="请输入分类描述"
-            />
-          </el-form-item>
-          <el-form-item label="状态" prop="isActive">
-            <el-radio-group v-model="categoryForm.isActive">
-              <el-radio :label="true">启用</el-radio>
-              <el-radio :label="false">禁用</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveCategory">确定</el-button>
-          </span>
-        </template>
-      </el-dialog>
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="分类名称" width="200" />
+        <el-table-column prop="description" label="描述" />
+        <el-table-column prop="status" label="状态" width="120">
+          <template #default="scope">
+            <el-tag :type="scope.row.isActive ? 'success' : 'danger'">
+              {{ scope.row.isActive ? '启用' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="eventCount" label="赛事数量" width="120" />
+        <el-table-column label="操作" fixed="right" width="200">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button>
+            <el-button
+              size="small"
+              :type="scope.row.isActive ? 'danger' : 'success'"
+              @click="handleToggleStatus(scope.row)"
+              >{{ scope.row.isActive ? '禁用' : '启用' }}</el-button>
+            <el-button
+              size="small"
+              type="danger"
+              @click="handleDelete(scope.row)"
+              >删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </div>
-  </admin-layout>
+
+    <!-- 添加/编辑分类对话框 -->
+    <el-dialog
+      :title="isEdit ? '编辑分类' : '添加分类'"
+      v-model="dialogVisible"
+      width="500px"
+    >
+      <el-form
+        :model="categoryForm"
+        :rules="categoryRules"
+        ref="categoryFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="分类名称" prop="name">
+          <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="categoryForm.description"
+            type="textarea"
+            rows="3"
+            placeholder="请输入分类描述"
+          />
+        </el-form-item>
+        <el-form-item label="状态" prop="isActive">
+          <el-radio-group v-model="categoryForm.isActive">
+            <el-radio :label="true">启用</el-radio>
+            <el-radio :label="false">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveCategory">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -104,7 +102,6 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { categoryAPI } from '../../../api/categoryAPI';
 import type { EventCategory } from '@/types/event';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 // 分类列表数据
 const categoryList = ref<EventCategory[]>([]);

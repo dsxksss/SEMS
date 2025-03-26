@@ -1,126 +1,123 @@
 <template>
-  <admin-layout>
-    <div class="role-management">
-      <div class="main-container">
-        <div class="header">
-          <h3>角色管理</h3>
-          <el-button type="primary" @click="dialogVisible = true">添加角色</el-button>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="roleList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="name" label="角色标识" width="180" />
-          <el-table-column prop="displayName" label="角色名称" width="180" />
-          <el-table-column prop="description" label="描述" />
-          <el-table-column prop="createdAt" label="创建时间" width="180" />
-          <el-table-column label="操作" width="200" fixed="right">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button>
-              <el-button
-                size="small"
-                type="danger"
-                :disabled="isSystemRole(scope.row)"
-                @click="handleDelete(scope.row)"
-                >删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+  <div class="role-management">
+    <div class="main-container">
+      <div class="header">
+        <h3>角色管理</h3>
+        <el-button type="primary" @click="dialogVisible = true">添加角色</el-button>
       </div>
 
-      <!-- 添加/编辑角色对话框 -->
-      <el-dialog
-        :title="isEdit ? '编辑角色' : '添加角色'"
-        v-model="dialogVisible"
-        width="500px"
+      <el-table
+        v-loading="loading"
+        :data="roleList"
+        border
+        style="width: 100%"
       >
-        <el-form
-          :model="roleForm"
-          :rules="roleRules"
-          ref="roleFormRef"
-          label-width="100px"
-        >
-          <el-form-item label="角色标识" prop="name">
-            <el-input 
-              v-model="roleForm.name" 
-              placeholder="请输入角色标识，如ROLE_CUSTOM" 
-              :disabled="isEdit && isSystemRole(roleForm)"
-            />
-          </el-form-item>
-          <el-form-item label="角色名称" prop="displayName">
-            <el-input v-model="roleForm.displayName" placeholder="请输入角色名称，如自定义角色" />
-          </el-form-item>
-          <el-form-item label="描述" prop="description">
-            <el-input
-              v-model="roleForm.description"
-              type="textarea"
-              placeholder="请输入角色描述"
-              rows="3"
-            />
-          </el-form-item>
-          <el-form-item label="权限" prop="permissions">
-            <el-checkbox-group v-model="roleForm.permissions">
-              <div class="permission-group">
-                <div class="group-title">用户管理</div>
-                <div class="group-content">
-                  <el-checkbox label="user:view">查看用户</el-checkbox>
-                  <el-checkbox label="user:create">创建用户</el-checkbox>
-                  <el-checkbox label="user:edit">编辑用户</el-checkbox>
-                  <el-checkbox label="user:delete">删除用户</el-checkbox>
-                </div>
-              </div>
-              <div class="permission-group">
-                <div class="group-title">赛事管理</div>
-                <div class="group-content">
-                  <el-checkbox label="event:view">查看赛事</el-checkbox>
-                  <el-checkbox label="event:create">创建赛事</el-checkbox>
-                  <el-checkbox label="event:edit">编辑赛事</el-checkbox>
-                  <el-checkbox label="event:delete">删除赛事</el-checkbox>
-                </div>
-              </div>
-              <div class="permission-group">
-                <div class="group-title">报名管理</div>
-                <div class="group-content">
-                  <el-checkbox label="registration:view">查看报名</el-checkbox>
-                  <el-checkbox label="registration:approve">审核报名</el-checkbox>
-                  <el-checkbox label="registration:cancel">取消报名</el-checkbox>
-                </div>
-              </div>
-              <div class="permission-group">
-                <div class="group-title">公告管理</div>
-                <div class="group-content">
-                  <el-checkbox label="announcement:view">查看公告</el-checkbox>
-                  <el-checkbox label="announcement:create">创建公告</el-checkbox>
-                  <el-checkbox label="announcement:edit">编辑公告</el-checkbox>
-                  <el-checkbox label="announcement:delete">删除公告</el-checkbox>
-                </div>
-              </div>
-            </el-checkbox-group>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveRole">确定</el-button>
-          </span>
-        </template>
-      </el-dialog>
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="角色标识" width="180" />
+        <el-table-column prop="displayName" label="角色名称" width="180" />
+        <el-table-column prop="description" label="描述" />
+        <el-table-column prop="createdAt" label="创建时间" width="180" />
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button>
+            <el-button
+              size="small"
+              type="danger"
+              :disabled="isSystemRole(scope.row)"
+              @click="handleDelete(scope.row)"
+              >删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
-  </admin-layout>
+
+    <!-- 添加/编辑角色对话框 -->
+    <el-dialog
+      :title="isEdit ? '编辑角色' : '添加角色'"
+      v-model="dialogVisible"
+      width="500px"
+    >
+      <el-form
+        :model="roleForm"
+        :rules="roleRules"
+        ref="roleFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="角色标识" prop="name">
+          <el-input 
+            v-model="roleForm.name" 
+            placeholder="请输入角色标识，如ROLE_CUSTOM" 
+            :disabled="isEdit && isSystemRole(roleForm)"
+          />
+        </el-form-item>
+        <el-form-item label="角色名称" prop="displayName">
+          <el-input v-model="roleForm.displayName" placeholder="请输入角色名称，如自定义角色" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="roleForm.description"
+            type="textarea"
+            placeholder="请输入角色描述"
+            rows="3"
+          />
+        </el-form-item>
+        <el-form-item label="权限" prop="permissions">
+          <el-checkbox-group v-model="roleForm.permissions">
+            <div class="permission-group">
+              <div class="group-title">用户管理</div>
+              <div class="group-content">
+                <el-checkbox label="user:view">查看用户</el-checkbox>
+                <el-checkbox label="user:create">创建用户</el-checkbox>
+                <el-checkbox label="user:edit">编辑用户</el-checkbox>
+                <el-checkbox label="user:delete">删除用户</el-checkbox>
+              </div>
+            </div>
+            <div class="permission-group">
+              <div class="group-title">赛事管理</div>
+              <div class="group-content">
+                <el-checkbox label="event:view">查看赛事</el-checkbox>
+                <el-checkbox label="event:create">创建赛事</el-checkbox>
+                <el-checkbox label="event:edit">编辑赛事</el-checkbox>
+                <el-checkbox label="event:delete">删除赛事</el-checkbox>
+              </div>
+            </div>
+            <div class="permission-group">
+              <div class="group-title">报名管理</div>
+              <div class="group-content">
+                <el-checkbox label="registration:view">查看报名</el-checkbox>
+                <el-checkbox label="registration:approve">审核报名</el-checkbox>
+                <el-checkbox label="registration:cancel">取消报名</el-checkbox>
+              </div>
+            </div>
+            <div class="permission-group">
+              <div class="group-title">公告管理</div>
+              <div class="group-content">
+                <el-checkbox label="announcement:view">查看公告</el-checkbox>
+                <el-checkbox label="announcement:create">创建公告</el-checkbox>
+                <el-checkbox label="announcement:edit">编辑公告</el-checkbox>
+                <el-checkbox label="announcement:delete">删除公告</el-checkbox>
+              </div>
+            </div>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveRole">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface Role {
   id: number;

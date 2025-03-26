@@ -1,189 +1,186 @@
 <template>
-  <admin-layout>
-    <div class="result-list">
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="form-inline">
-          <el-form-item label="赛事名称">
-            <el-select v-model="filterForm.eventId" placeholder="选择赛事" clearable style="width: 220px">
-              <el-option
-                v-for="event in events"
-                :key="event.id"
-                :label="event.name"
-                :value="event.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="运动员姓名">
-            <el-input v-model="filterForm.athleteName" placeholder="输入运动员姓名搜索" clearable />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="searchResults">搜索</el-button>
-            <el-button @click="resetForm">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="table-container">
-        <div class="table-header">
-          <h3>赛事结果列表</h3>
-          <div class="table-actions">
-            <el-button type="primary" @click="showAddResultDialog">录入成绩</el-button>
-            <el-button type="success" @click="exportResults">导出成绩数据</el-button>
-          </div>
-        </div>
-
-        <el-tabs v-model="activeTabName" class="result-tabs" @tab-click="handleTabClick">
-          <el-tab-pane label="所有赛事" name="all"></el-tab-pane>
-          <el-tab-pane
-            v-for="event in activeEvents"
-            :key="event.id"
-            :label="event.name"
-            :name="event.id.toString()"
-          ></el-tab-pane>
-        </el-tabs>
-
-        <el-table
-          v-loading="loading"
-          :data="resultList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="eventName" label="赛事名称" width="200" show-overflow-tooltip />
-          <el-table-column prop="athleteName" label="运动员" width="120" />
-          <el-table-column prop="score" label="成绩" width="120" />
-          <el-table-column prop="rank" label="排名" width="80" />
-          <el-table-column prop="unit" label="单位" width="120" />
-          <el-table-column prop="category" label="组别" width="120" />
-          <el-table-column prop="recordTime" label="记录时间" width="180" />
-          <el-table-column prop="recorder" label="记录人" width="120" />
-          <el-table-column label="操作" fixed="right" width="150">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button>
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleDelete(scope.row)"
-                >删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </div>
-
-      <!-- 添加/编辑结果弹窗 -->
-      <el-dialog
-        :title="isEdit ? '编辑成绩' : '录入成绩'"
-        v-model="resultDialogVisible"
-        width="600px"
-      >
-        <el-form 
-          ref="resultFormRef"
-          :model="resultForm"
-          :rules="rules"
-          label-width="100px"
-          label-position="right"
-        >
-          <el-form-item label="赛事" prop="eventId">
-            <el-select v-model="resultForm.eventId" placeholder="选择赛事" style="width: 100%">
-              <el-option
-                v-for="event in events"
-                :key="event.id"
-                :label="event.name"
-                :value="event.id"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="运动员" prop="athleteId">
-            <el-select 
-              v-model="resultForm.athleteId" 
-              placeholder="选择运动员" 
-              filterable 
-              remote
-              :remote-method="searchAthletes"
-              :loading="athleteLoading"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="athlete in athletes"
-                :key="athlete.id"
-                :label="athlete.name"
-                :value="athlete.id"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="成绩" prop="score">
-            <el-input v-model="resultForm.score" placeholder="请输入成绩" />
-          </el-form-item>
-
-          <el-form-item label="排名" prop="rank">
-            <el-input-number v-model="resultForm.rank" :min="1" style="width: 100%" />
-          </el-form-item>
-          
-          <el-form-item label="单位" prop="unit">
-            <el-input v-model="resultForm.unit" placeholder="请输入单位" />
-          </el-form-item>
-
-          <el-form-item label="组别" prop="category">
-            <el-input v-model="resultForm.category" placeholder="请输入组别" />
-          </el-form-item>
-
-          <el-form-item label="备注" prop="remark">
-            <el-input
-              v-model="resultForm.remark"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入备注信息"
+  <div class="result-list">
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="form-inline">
+        <el-form-item label="赛事名称">
+          <el-select v-model="filterForm.eventId" placeholder="选择赛事" clearable style="width: 220px">
+            <el-option
+              v-for="event in events"
+              :key="event.id"
+              :label="event.name"
+              :value="event.id"
             />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="resultDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="submitResultForm" :loading="submitting">保存</el-button>
-          </span>
-        </template>
-      </el-dialog>
-
-      <!-- 删除确认对话框 -->
-      <el-dialog
-        title="确认删除"
-        v-model="deleteDialogVisible"
-        width="400px"
-      >
-        <p>确定要删除该成绩记录吗？删除后无法恢复。</p>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="deleteDialogVisible = false">取消</el-button>
-            <el-button type="danger" @click="confirmDelete" :loading="deleting">确认删除</el-button>
-          </span>
-        </template>
-      </el-dialog>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="运动员姓名">
+          <el-input v-model="filterForm.athleteName" placeholder="输入运动员姓名搜索" clearable />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchResults">搜索</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
-  </admin-layout>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>赛事结果列表</h3>
+        <div class="table-actions">
+          <el-button type="primary" @click="showAddResultDialog">录入成绩</el-button>
+          <el-button type="success" @click="exportResults">导出成绩数据</el-button>
+        </div>
+      </div>
+
+      <el-tabs v-model="activeTabName" class="result-tabs" @tab-click="handleTabClick">
+        <el-tab-pane label="所有赛事" name="all"></el-tab-pane>
+        <el-tab-pane
+          v-for="event in activeEvents"
+          :key="event.id"
+          :label="event.name"
+          :name="event.id.toString()"
+        ></el-tab-pane>
+      </el-tabs>
+
+      <el-table
+        v-loading="loading"
+        :data="resultList"
+        border
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="eventName" label="赛事名称" width="200" show-overflow-tooltip />
+        <el-table-column prop="athleteName" label="运动员" width="120" />
+        <el-table-column prop="score" label="成绩" width="120" />
+        <el-table-column prop="rank" label="排名" width="80" />
+        <el-table-column prop="unit" label="单位" width="120" />
+        <el-table-column prop="category" label="组别" width="120" />
+        <el-table-column prop="recordTime" label="记录时间" width="180" />
+        <el-table-column prop="recorder" label="记录人" width="120" />
+        <el-table-column label="操作" fixed="right" width="150">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button>
+            <el-button
+              size="small"
+              type="danger"
+              @click="handleDelete(scope.row)"
+              >删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
+
+    <!-- 添加/编辑结果弹窗 -->
+    <el-dialog
+      :title="isEdit ? '编辑成绩' : '录入成绩'"
+      v-model="resultDialogVisible"
+      width="600px"
+    >
+      <el-form 
+        ref="resultFormRef"
+        :model="resultForm"
+        :rules="rules"
+        label-width="100px"
+        label-position="right"
+      >
+        <el-form-item label="赛事" prop="eventId">
+          <el-select v-model="resultForm.eventId" placeholder="选择赛事" style="width: 100%">
+            <el-option
+              v-for="event in events"
+              :key="event.id"
+              :label="event.name"
+              :value="event.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="运动员" prop="athleteId">
+          <el-select 
+            v-model="resultForm.athleteId" 
+            placeholder="选择运动员" 
+            filterable 
+            remote
+            :remote-method="searchAthletes"
+            :loading="athleteLoading"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="athlete in athletes"
+              :key="athlete.id"
+              :label="athlete.name"
+              :value="athlete.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="成绩" prop="score">
+          <el-input v-model="resultForm.score" placeholder="请输入成绩" />
+        </el-form-item>
+
+        <el-form-item label="排名" prop="rank">
+          <el-input-number v-model="resultForm.rank" :min="1" style="width: 100%" />
+        </el-form-item>
+        
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="resultForm.unit" placeholder="请输入单位" />
+        </el-form-item>
+
+        <el-form-item label="组别" prop="category">
+          <el-input v-model="resultForm.category" placeholder="请输入组别" />
+        </el-form-item>
+
+        <el-form-item label="备注" prop="remark">
+          <el-input
+            v-model="resultForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入备注信息"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="resultDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitResultForm" :loading="submitting">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 删除确认对话框 -->
+    <el-dialog
+      title="确认删除"
+      v-model="deleteDialogVisible"
+      width="400px"
+    >
+      <p>确定要删除该成绩记录吗？删除后无法恢复。</p>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="deleteDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmDelete" :loading="deleting">确认删除</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, FormInstance, FormRules } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface Event {
   id: number;

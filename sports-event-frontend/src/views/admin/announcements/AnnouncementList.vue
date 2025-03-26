@@ -1,238 +1,235 @@
 <template>
-  <admin-layout>
-    <div class="announcement-list">
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="form-inline">
-          <el-form-item label="标题">
-            <el-input v-model="filterForm.title" placeholder="输入标题搜索" clearable />
-          </el-form-item>
-          <el-form-item label="类型">
-            <el-select v-model="filterForm.type" placeholder="选择类型" clearable>
-              <el-option label="赛事通知" value="EVENT" />
-              <el-option label="报名通知" value="REGISTRATION" />
-              <el-option label="规则通知" value="RULE" />
-              <el-option label="系统通知" value="SYSTEM" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
-              <el-option label="已发布" value="PUBLISHED" />
-              <el-option label="草稿" value="DRAFT" />
-              <el-option label="已过期" value="EXPIRED" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="searchAnnouncements">搜索</el-button>
-            <el-button @click="resetForm">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="table-container">
-        <div class="table-header">
-          <h3>公告列表</h3>
-          <el-button type="primary" @click="handleCreate">发布公告</el-button>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="announcementList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="title" label="标题" width="250" show-overflow-tooltip />
-          <el-table-column prop="type" label="类型" width="120">
-            <template #default="scope">
-              <el-tag :type="getTypeTag(scope.row.type)">
-                {{ formatType(scope.row.type) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="scope">
-              <el-tag :type="getStatusTag(scope.row.status)">
-                {{ formatStatus(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column prop="publishTime" label="发布时间" width="180" />
-          <el-table-column prop="createdBy" label="创建者" width="120" />
-          <el-table-column prop="viewCount" label="浏览量" width="100" />
-          <el-table-column label="操作" fixed="right" width="220">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleView(scope.row)"
-                >查看</el-button>
-              <el-button
-                v-if="scope.row.status !== 'EXPIRED'"
-                size="small"
-                type="success"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button>
-              <el-button
-                v-if="scope.row.status === 'DRAFT'"
-                size="small"
-                type="warning"
-                @click="handlePublish(scope.row)"
-                >发布</el-button>
-              <el-button
-                v-if="scope.row.status === 'PUBLISHED'"
-                size="small"
-                type="info"
-                @click="handleSetExpired(scope.row)"
-                >过期</el-button>
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleDelete(scope.row)"
-                >删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </div>
-
-      <!-- 公告详情弹窗 -->
-      <el-dialog
-        title="公告详情"
-        v-model="detailDialogVisible"
-        width="800px"
-      >
-        <div v-if="currentAnnouncement" class="announcement-detail">
-          <div class="announcement-header">
-            <h2>{{ currentAnnouncement.title }}</h2>
-            <div class="announcement-meta">
-              <span>发布时间：{{ currentAnnouncement.publishTime || '未发布' }}</span>
-              <span>类型：{{ formatType(currentAnnouncement.type) }}</span>
-              <span>浏览量：{{ currentAnnouncement.viewCount }}</span>
-            </div>
-          </div>
-          <div class="announcement-content" v-html="currentAnnouncement.content"></div>
-          <div class="announcement-attachments" v-if="currentAnnouncement.attachments && currentAnnouncement.attachments.length > 0">
-            <h4>附件：</h4>
-            <ul class="attachment-list">
-              <li v-for="(attachment, index) in currentAnnouncement.attachments" :key="index">
-                <a :href="attachment.url" target="_blank">{{ attachment.name }}</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="detailDialogVisible = false">关闭</el-button>
-            <el-button 
-              v-if="currentAnnouncement && currentAnnouncement.status !== 'EXPIRED'"
-              type="primary" 
-              @click="handleEdit(currentAnnouncement)"
-            >编辑</el-button>
-          </span>
-        </template>
-      </el-dialog>
-
-      <!-- 编辑/创建公告弹窗 -->
-      <el-dialog
-        :title="isEdit ? '编辑公告' : '发布新公告'"
-        v-model="formDialogVisible"
-        width="800px"
-      >
-        <el-form 
-          ref="announcementFormRef"
-          :model="announcementForm"
-          :rules="rules"
-          label-width="100px"
-          label-position="right"
-        >
-          <el-form-item label="标题" prop="title">
-            <el-input v-model="announcementForm.title" placeholder="请输入公告标题" />
-          </el-form-item>
-          
-          <el-form-item label="类型" prop="type">
-            <el-select v-model="announcementForm.type" placeholder="请选择公告类型" style="width: 100%">
-              <el-option label="赛事通知" value="EVENT" />
-              <el-option label="报名通知" value="REGISTRATION" />
-              <el-option label="规则通知" value="RULE" />
-              <el-option label="系统通知" value="SYSTEM" />
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="内容" prop="content">
-            <el-input
-              v-model="announcementForm.content"
-              type="textarea"
-              :rows="10"
-              placeholder="请输入公告内容，支持HTML格式"
-            />
-          </el-form-item>
-          
-          <el-form-item label="发布状态" prop="status">
-            <el-radio-group v-model="announcementForm.status">
-              <el-radio label="PUBLISHED">立即发布</el-radio>
-              <el-radio label="DRAFT">保存草稿</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <el-form-item label="附件">
-            <el-upload
-              action="#"
-              :auto-upload="false"
-              :file-list="fileList"
-              :on-change="handleFileChange"
-              multiple
-            >
-              <el-button type="primary">选择文件</el-button>
-              <template #tip>
-                <div class="el-upload__tip">
-                  可上传任意类型文件，单个文件不超过10MB
-                </div>
-              </template>
-            </el-upload>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="formDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="submitAnnouncementForm" :loading="submitting">保存</el-button>
-          </span>
-        </template>
-      </el-dialog>
-
-      <!-- 删除确认对话框 -->
-      <el-dialog
-        title="确认删除"
-        v-model="deleteDialogVisible"
-        width="400px"
-      >
-        <p>确定要删除该公告吗？删除后无法恢复。</p>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="deleteDialogVisible = false">取消</el-button>
-            <el-button type="danger" @click="confirmDelete" :loading="deleting">确认删除</el-button>
-          </span>
-        </template>
-      </el-dialog>
+  <div class="announcement-list">
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="form-inline">
+        <el-form-item label="标题">
+          <el-input v-model="filterForm.title" placeholder="输入标题搜索" clearable />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select v-model="filterForm.type" placeholder="选择类型" clearable>
+            <el-option label="赛事通知" value="EVENT" />
+            <el-option label="报名通知" value="REGISTRATION" />
+            <el-option label="规则通知" value="RULE" />
+            <el-option label="系统通知" value="SYSTEM" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
+            <el-option label="已发布" value="PUBLISHED" />
+            <el-option label="草稿" value="DRAFT" />
+            <el-option label="已过期" value="EXPIRED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchAnnouncements">搜索</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
-  </admin-layout>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>公告列表</h3>
+        <el-button type="primary" @click="handleCreate">发布公告</el-button>
+      </div>
+
+      <el-table
+        v-loading="loading"
+        :data="announcementList"
+        border
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="title" label="标题" width="250" show-overflow-tooltip />
+        <el-table-column prop="type" label="类型" width="120">
+          <template #default="scope">
+            <el-tag :type="getTypeTag(scope.row.type)">
+              {{ formatType(scope.row.type) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="getStatusTag(scope.row.status)">
+              {{ formatStatus(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="publishTime" label="发布时间" width="180" />
+        <el-table-column prop="createdBy" label="创建者" width="120" />
+        <el-table-column prop="viewCount" label="浏览量" width="100" />
+        <el-table-column label="操作" fixed="right" width="220">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleView(scope.row)"
+              >查看</el-button>
+            <el-button
+              v-if="scope.row.status !== 'EXPIRED'"
+              size="small"
+              type="success"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button>
+            <el-button
+              v-if="scope.row.status === 'DRAFT'"
+              size="small"
+              type="warning"
+              @click="handlePublish(scope.row)"
+              >发布</el-button>
+            <el-button
+              v-if="scope.row.status === 'PUBLISHED'"
+              size="small"
+              type="info"
+              @click="handleSetExpired(scope.row)"
+              >过期</el-button>
+            <el-button
+              size="small"
+              type="danger"
+              @click="handleDelete(scope.row)"
+              >删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
+
+    <!-- 公告详情弹窗 -->
+    <el-dialog
+      title="公告详情"
+      v-model="detailDialogVisible"
+      width="800px"
+    >
+      <div v-if="currentAnnouncement" class="announcement-detail">
+        <div class="announcement-header">
+          <h2>{{ currentAnnouncement.title }}</h2>
+          <div class="announcement-meta">
+            <span>发布时间：{{ currentAnnouncement.publishTime || '未发布' }}</span>
+            <span>类型：{{ formatType(currentAnnouncement.type) }}</span>
+            <span>浏览量：{{ currentAnnouncement.viewCount }}</span>
+          </div>
+        </div>
+        <div class="announcement-content" v-html="currentAnnouncement.content"></div>
+        <div class="announcement-attachments" v-if="currentAnnouncement.attachments && currentAnnouncement.attachments.length > 0">
+          <h4>附件：</h4>
+          <ul class="attachment-list">
+            <li v-for="(attachment, index) in currentAnnouncement.attachments" :key="index">
+              <a :href="attachment.url" target="_blank">{{ attachment.name }}</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button 
+            v-if="currentAnnouncement && currentAnnouncement.status !== 'EXPIRED'"
+            type="primary" 
+            @click="handleEdit(currentAnnouncement)"
+          >编辑</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑/创建公告弹窗 -->
+    <el-dialog
+      :title="isEdit ? '编辑公告' : '发布新公告'"
+      v-model="formDialogVisible"
+      width="800px"
+    >
+      <el-form 
+        ref="announcementFormRef"
+        :model="announcementForm"
+        :rules="rules"
+        label-width="100px"
+        label-position="right"
+      >
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="announcementForm.title" placeholder="请输入公告标题" />
+        </el-form-item>
+        
+        <el-form-item label="类型" prop="type">
+          <el-select v-model="announcementForm.type" placeholder="请选择公告类型" style="width: 100%">
+            <el-option label="赛事通知" value="EVENT" />
+            <el-option label="报名通知" value="REGISTRATION" />
+            <el-option label="规则通知" value="RULE" />
+            <el-option label="系统通知" value="SYSTEM" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="内容" prop="content">
+          <el-input
+            v-model="announcementForm.content"
+            type="textarea"
+            :rows="10"
+            placeholder="请输入公告内容，支持HTML格式"
+          />
+        </el-form-item>
+        
+        <el-form-item label="发布状态" prop="status">
+          <el-radio-group v-model="announcementForm.status">
+            <el-radio label="PUBLISHED">立即发布</el-radio>
+            <el-radio label="DRAFT">保存草稿</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        
+        <el-form-item label="附件">
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :file-list="fileList"
+            :on-change="handleFileChange"
+            multiple
+          >
+            <el-button type="primary">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                可上传任意类型文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="formDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAnnouncementForm" :loading="submitting">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 删除确认对话框 -->
+    <el-dialog
+      title="确认删除"
+      v-model="deleteDialogVisible"
+      width="400px"
+    >
+      <p>确定要删除该公告吗？删除后无法恢复。</p>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="deleteDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmDelete" :loading="deleting">确认删除</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, FormInstance, FormRules } from 'element-plus';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface Attachment {
   name: string;

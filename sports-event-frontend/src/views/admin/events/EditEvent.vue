@@ -1,106 +1,103 @@
 <template>
-  <admin-layout>
-    <div class="edit-event">
-      <div class="page-header">
-        <h2>编辑赛事</h2>
-        <el-button @click="$router.push('/admin/events/list')">返回赛事列表</el-button>
-      </div>
-      
-      <div v-if="loading" class="loading-container">
-        <el-skeleton style="width: 100%" :rows="10" animated />
-      </div>
-      
-      <div v-else class="event-form-container">
-        <el-form 
-          ref="eventFormRef"
-          :model="eventForm"
-          :rules="rules"
-          label-width="120px"
-          label-position="right"
-          class="event-form"
-        >
-          <el-form-item label="赛事名称" prop="name">
-            <el-input v-model="eventForm.name" placeholder="请输入赛事名称" />
-          </el-form-item>
-          
-          <el-form-item label="赛事分类" prop="categoryId">
-            <el-select v-model="eventForm.categoryId" placeholder="请选择赛事分类" style="width: 100%">
-              <el-option
-                v-for="category in categories"
-                :key="category.id"
-                :label="category.name"
-                :value="category.id"
-              />
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="赛事日期" prop="eventDates">
-            <el-date-picker
-              v-model="eventForm.eventDates"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              style="width: 100%"
-            />
-          </el-form-item>
-          
-          <el-form-item label="报名时间" prop="registrationDates">
-            <el-date-picker
-              v-model="eventForm.registrationDates"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              style="width: 100%"
-            />
-          </el-form-item>
-          
-          <el-form-item label="比赛地点" prop="location">
-            <el-input v-model="eventForm.location" placeholder="请输入比赛地点" />
-          </el-form-item>
-          
-          <el-form-item label="主办方" prop="organizer">
-            <el-input v-model="eventForm.organizer" placeholder="请输入主办方" />
-          </el-form-item>
-          
-          <el-form-item label="最大参与人数" prop="maxParticipants">
-            <el-input-number 
-              v-model="eventForm.maxParticipants" 
-              :min="1" 
-              :max="10000" 
-              :step="1"
-              style="width: 100%"
-            />
-          </el-form-item>
-          
-          <el-form-item label="赛事描述" prop="description">
-            <el-input
-              v-model="eventForm.description"
-              type="textarea"
-              :rows="6"
-              placeholder="请输入赛事详细描述，包括赛事规则、奖励等信息"
-            />
-          </el-form-item>
-          
-          <el-form-item>
-            <el-button type="primary" @click="submitForm" :loading="submitting">保存修改</el-button>
-            <el-button @click="resetForm">重置</el-button>
-            <el-button @click="$router.push('/admin/events/list')">取消</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
+  <div class="edit-event">
+    <div class="page-header">
+      <h2>编辑赛事</h2>
+      <el-button @click="$router.push('/admin/events/list')">返回赛事列表</el-button>
     </div>
-  </admin-layout>
+    
+    <div v-if="loading" class="loading-container">
+      <el-skeleton style="width: 100%" :rows="10" animated />
+    </div>
+    
+    <div v-else class="event-form-container">
+      <el-form 
+        ref="eventFormRef"
+        :model="eventForm"
+        :rules="rules"
+        label-width="120px"
+        label-position="right"
+        class="event-form"
+      >
+        <el-form-item label="赛事名称" prop="name">
+          <el-input v-model="eventForm.name" placeholder="请输入赛事名称" />
+        </el-form-item>
+        
+        <el-form-item label="赛事分类" prop="categoryId">
+          <el-select v-model="eventForm.categoryId" placeholder="请选择赛事分类" style="width: 100%">
+            <el-option
+              v-for="category in categories"
+              :key="category.id"
+              :label="category.name"
+              :value="category.id"
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="赛事日期" prop="eventDates">
+          <el-date-picker
+            v-model="eventForm.eventDates"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+        
+        <el-form-item label="报名时间" prop="registrationDates">
+          <el-date-picker
+            v-model="eventForm.registrationDates"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+        
+        <el-form-item label="比赛地点" prop="location">
+          <el-input v-model="eventForm.location" placeholder="请输入比赛地点" />
+        </el-form-item>
+        
+        <el-form-item label="主办方" prop="organizer">
+          <el-input v-model="eventForm.organizer" placeholder="请输入主办方" />
+        </el-form-item>
+        
+        <el-form-item label="最大参与人数" prop="maxParticipants">
+          <el-input-number 
+            v-model="eventForm.maxParticipants" 
+            :min="1" 
+            :max="10000" 
+            :step="1"
+            style="width: 100%"
+          />
+        </el-form-item>
+        
+        <el-form-item label="赛事描述" prop="description">
+          <el-input
+            v-model="eventForm.description"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入赛事详细描述，包括赛事规则、奖励等信息"
+          />
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button type="primary" @click="submitForm" :loading="submitting">保存修改</el-button>
+          <el-button @click="resetForm">重置</el-button>
+          <el-button @click="$router.push('/admin/events/list')">取消</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, FormInstance, FormRules } from 'element-plus';
+import { useRouter, useRoute } from 'vue-router';
 import { eventsAPI } from '../../../api/eventsAPI';
 import { categoryAPI } from '../../../api/categoryAPI';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface EventCategory {
   id: number;

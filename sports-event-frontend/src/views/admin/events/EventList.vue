@@ -1,184 +1,182 @@
 <template>
-  <admin-layout>
-    <div class="event-list">
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="form-inline">
-          <el-form-item label="赛事名称">
-            <el-input v-model="filterForm.name" placeholder="输入赛事名称搜索" clearable />
-          </el-form-item>
-          <el-form-item label="分类">
-            <el-select v-model="filterForm.categoryId" placeholder="选择分类" clearable>
-              <el-option
-                v-for="category in categories"
-                :key="category.id"
-                :label="category.name"
-                :value="category.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
-              <el-option label="未开始" value="NOT_STARTED" />
-              <el-option label="报名中" value="REGISTRATION" />
-              <el-option label="进行中" value="IN_PROGRESS" />
-              <el-option label="已结束" value="ENDED" />
-              <el-option label="已取消" value="CANCELED" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="searchEvents">搜索</el-button>
-            <el-button @click="resetForm">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="table-container">
-        <div class="table-header">
-          <h3>赛事列表</h3>
-          <el-button type="primary" @click="$router.push('/admin/events/create')">创建赛事</el-button>
-        </div>
-
-        <el-table
-          v-loading="loading"
-          :data="eventList"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="name" label="赛事名称" width="200" show-overflow-tooltip />
-          <el-table-column prop="category" label="分类" width="120" />
-          <el-table-column label="日期" width="220">
-            <template #default="scope">
-              {{ scope.row.startDate }} 至 {{ scope.row.endDate }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="location" label="地点" width="150" show-overflow-tooltip />
-          <el-table-column prop="registrationCount" label="报名人数" width="100" />
-          <el-table-column prop="maxParticipants" label="最大人数" width="100" />
-          <el-table-column prop="status" label="状态" width="120">
-            <template #default="scope">
-              <el-tag :type="getStatusType(scope.row.status)">
-                {{ formatStatus(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" fixed="right" width="280">
-            <template #default="scope">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleView(scope.row)"
-                >详情</el-button>
-              <el-button
-                v-if="canEdit(scope.row)"
-                size="small"
-                type="success"
-                @click="handleEdit(scope.row)"
-                >编辑</el-button>
-              <el-button
-                v-if="scope.row.status === 'NOT_STARTED'"
-                size="small"
-                type="info"
-                @click="handleChangeStatus(scope.row, 'REGISTRATION')"
-                >开放报名</el-button>
-              <el-button
-                v-if="scope.row.status === 'REGISTRATION'"
-                size="small"
-                type="warning"
-                @click="handleChangeStatus(scope.row, 'IN_PROGRESS')"
-                >开始比赛</el-button>
-              <el-button
-                v-if="scope.row.status === 'IN_PROGRESS'"
-                size="small"
-                type="danger"
-                @click="handleChangeStatus(scope.row, 'ENDED')"
-                >结束比赛</el-button>
-              <el-button
-                v-if="canCancel(scope.row)"
-                size="small"
-                type="danger"
-                @click="handleChangeStatus(scope.row, 'CANCELED')"
-                >取消赛事</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination-container">
-          <el-pagination
-            background
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            :page-size="pageSize"
-            :current-page="currentPage"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </div>
-
-      <!-- 详情弹窗 -->
-      <el-dialog
-        title="赛事详情"
-        v-model="detailDialogVisible"
-        width="800px"
-      >
-        <div v-if="currentEvent" class="event-detail">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="赛事名称" :span="2">{{ currentEvent.name }}</el-descriptions-item>
-            <el-descriptions-item label="赛事分类">{{ currentEvent.category }}</el-descriptions-item>
-            <el-descriptions-item label="赛事状态">
-              <el-tag :type="getStatusType(currentEvent.status)">
-                {{ formatStatus(currentEvent.status) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="开始日期">{{ currentEvent.startDate }}</el-descriptions-item>
-            <el-descriptions-item label="结束日期">{{ currentEvent.endDate }}</el-descriptions-item>
-            <el-descriptions-item label="地点">{{ currentEvent.location }}</el-descriptions-item>
-            <el-descriptions-item label="主办方">{{ currentEvent.organizer }}</el-descriptions-item>
-            <el-descriptions-item label="报名开始日期">{{ currentEvent.registrationStartDate }}</el-descriptions-item>
-            <el-descriptions-item label="报名截止日期">{{ currentEvent.registrationEndDate }}</el-descriptions-item>
-            <el-descriptions-item label="已报名人数">{{ currentEvent.registrationCount }}</el-descriptions-item>
-            <el-descriptions-item label="最大人数">{{ currentEvent.maxParticipants }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ currentEvent.createdAt }}</el-descriptions-item>
-            <el-descriptions-item label="创建者">{{ currentEvent.createdBy }}</el-descriptions-item>
-            <el-descriptions-item label="赛事描述" :span="2">
-              <div class="event-description">{{ currentEvent.description }}</div>
-            </el-descriptions-item>
-          </el-descriptions>
-
-          <div class="detail-actions">
-            <el-button @click="detailDialogVisible = false">关闭</el-button>
-            <el-button
-              v-if="canEdit(currentEvent)"
-              type="primary"
-              @click="handleEdit(currentEvent)"
-              >编辑赛事</el-button>
-            <el-button
-              type="info"
-              @click="$router.push(`/admin/events/${currentEvent.id}/participants`)"
-              >查看参与者</el-button>
-          </div>
-        </div>
-      </el-dialog>
-
-      <!-- 状态变更确认弹窗 -->
-      <el-dialog
-        :title="statusChangeTitle"
-        v-model="statusDialogVisible"
-        width="500px"
-      >
-        <div class="status-change-content">
-          <p>{{ statusChangeMessage }}</p>
-        </div>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="statusDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmStatusChange">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
+  <div class="event-list">
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="form-inline">
+        <el-form-item label="赛事名称">
+          <el-input v-model="filterForm.name" placeholder="输入赛事名称搜索" clearable />
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="filterForm.categoryId" placeholder="选择分类" clearable>
+            <el-option
+              v-for="category in categories"
+              :key="category.id"
+              :label="category.name"
+              :value="category.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="选择状态" clearable>
+            <el-option label="未开始" value="NOT_STARTED" />
+            <el-option label="报名中" value="REGISTRATION" />
+            <el-option label="进行中" value="IN_PROGRESS" />
+            <el-option label="已结束" value="ENDED" />
+            <el-option label="已取消" value="CANCELED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchEvents">搜索</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
-  </admin-layout>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>赛事列表</h3>
+        <el-button type="primary" @click="$router.push('/admin/events/create')">创建赛事</el-button>
+      </div>
+
+      <el-table
+        v-loading="loading"
+        :data="eventList"
+        border
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="赛事名称" width="200" show-overflow-tooltip />
+        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column label="日期" width="220">
+          <template #default="scope">
+            {{ scope.row.startDate }} 至 {{ scope.row.endDate }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="location" label="地点" width="150" show-overflow-tooltip />
+        <el-table-column prop="registrationCount" label="报名人数" width="100" />
+        <el-table-column prop="maxParticipants" label="最大人数" width="100" />
+        <el-table-column prop="status" label="状态" width="120">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.status)">
+              {{ formatStatus(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="280">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleView(scope.row)"
+              >详情</el-button>
+            <el-button
+              v-if="canEdit(scope.row)"
+              size="small"
+              type="success"
+              @click="handleEdit(scope.row)"
+              >编辑</el-button>
+            <el-button
+              v-if="scope.row.status === 'NOT_STARTED'"
+              size="small"
+              type="info"
+              @click="handleChangeStatus(scope.row, 'REGISTRATION')"
+              >开放报名</el-button>
+            <el-button
+              v-if="scope.row.status === 'REGISTRATION'"
+              size="small"
+              type="warning"
+              @click="handleChangeStatus(scope.row, 'IN_PROGRESS')"
+              >开始比赛</el-button>
+            <el-button
+              v-if="scope.row.status === 'IN_PROGRESS'"
+              size="small"
+              type="danger"
+              @click="handleChangeStatus(scope.row, 'ENDED')"
+              >结束比赛</el-button>
+            <el-button
+              v-if="canCancel(scope.row)"
+              size="small"
+              type="danger"
+              @click="handleChangeStatus(scope.row, 'CANCELED')"
+              >取消赛事</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <el-dialog
+      title="赛事详情"
+      v-model="detailDialogVisible"
+      width="800px"
+    >
+      <div v-if="currentEvent" class="event-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="赛事名称" :span="2">{{ currentEvent.name }}</el-descriptions-item>
+          <el-descriptions-item label="赛事分类">{{ currentEvent.category }}</el-descriptions-item>
+          <el-descriptions-item label="赛事状态">
+            <el-tag :type="getStatusType(currentEvent.status)">
+              {{ formatStatus(currentEvent.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="开始日期">{{ currentEvent.startDate }}</el-descriptions-item>
+          <el-descriptions-item label="结束日期">{{ currentEvent.endDate }}</el-descriptions-item>
+          <el-descriptions-item label="地点">{{ currentEvent.location }}</el-descriptions-item>
+          <el-descriptions-item label="主办方">{{ currentEvent.organizer }}</el-descriptions-item>
+          <el-descriptions-item label="报名开始日期">{{ currentEvent.registrationStartDate }}</el-descriptions-item>
+          <el-descriptions-item label="报名截止日期">{{ currentEvent.registrationEndDate }}</el-descriptions-item>
+          <el-descriptions-item label="已报名人数">{{ currentEvent.registrationCount }}</el-descriptions-item>
+          <el-descriptions-item label="最大人数">{{ currentEvent.maxParticipants }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ currentEvent.createdAt }}</el-descriptions-item>
+          <el-descriptions-item label="创建者">{{ currentEvent.createdBy }}</el-descriptions-item>
+          <el-descriptions-item label="赛事描述" :span="2">
+            <div class="event-description">{{ currentEvent.description }}</div>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div class="detail-actions">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button
+            v-if="canEdit(currentEvent)"
+            type="primary"
+            @click="handleEdit(currentEvent)"
+            >编辑赛事</el-button>
+          <el-button
+            type="info"
+            @click="$router.push(`/admin/events/${currentEvent.id}/participants`)"
+            >查看参与者</el-button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 状态变更确认弹窗 -->
+    <el-dialog
+      :title="statusChangeTitle"
+      v-model="statusDialogVisible"
+      width="500px"
+    >
+      <div class="status-change-content">
+        <p>{{ statusChangeMessage }}</p>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="statusDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmStatusChange">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -187,7 +185,6 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { eventsAPI } from '../../../api/eventsAPI';
 import { categoryAPI } from '../../../api/categoryAPI';
-import AdminLayout from '../../../components/AdminLayout.vue';
 
 interface EventCategory {
   id: number;

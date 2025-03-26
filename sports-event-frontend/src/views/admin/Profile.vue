@@ -1,209 +1,206 @@
 <template>
-  <admin-layout>
-    <div class="profile-container">
-      <el-row :gutter="20">
-        <!-- 左侧用户信息 -->
-        <el-col :sm="24" :md="8" :lg="6">
-          <el-card shadow="hover" class="user-card">
-            <div class="user-header">
-              <div class="avatar-container">
-                <el-avatar :size="100" :src="userInfo.avatar || defaultAvatar">
-                  {{ userInfo.username?.substring(0, 1).toUpperCase() }}
-                </el-avatar>
-                <el-button class="change-avatar-btn" size="small" @click="handleChangeAvatar">
-                  <el-icon><el-icon-camera /></el-icon>
-                </el-button>
-              </div>
-              <h3 class="username">{{ userInfo.username }}</h3>
-              <div class="user-role">
-                <el-tag
-                  v-for="role in userInfo.roles"
-                  :key="role"
-                  :type="getRoleTagType(role)"
-                  class="role-tag"
-                >
-                  {{ formatRoleName(role) }}
-                </el-tag>
-              </div>
+  <div class="profile-container">
+    <el-row :gutter="20">
+      <!-- 左侧用户信息 -->
+      <el-col :sm="24" :md="8" :lg="6">
+        <el-card shadow="hover" class="user-card">
+          <div class="user-header">
+            <div class="avatar-container">
+              <el-avatar :size="100" :src="userInfo.avatar || defaultAvatar">
+                {{ userInfo.username?.substring(0, 1).toUpperCase() }}
+              </el-avatar>
+              <el-button class="change-avatar-btn" size="small" @click="handleChangeAvatar">
+                <el-icon><el-icon-camera /></el-icon>
+              </el-button>
             </div>
-            
-            <div class="user-info">
-              <div class="info-item">
-                <span class="label">邮箱：</span>
-                <span class="value">{{ userInfo.email }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">注册时间：</span>
-                <span class="value">{{ userInfo.createdAt }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">最后登录：</span>
-                <span class="value">{{ userInfo.lastLogin }}</span>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <!-- 右侧信息编辑 -->
-        <el-col :sm="24" :md="16" :lg="18">
-          <el-card shadow="hover">
-            <template #header>
-              <div class="card-header">
-                <el-tabs v-model="activeTab">
-                  <el-tab-pane label="基本信息" name="basic-info"></el-tab-pane>
-                  <el-tab-pane label="修改密码" name="change-password"></el-tab-pane>
-                  <el-tab-pane label="账户安全" name="security"></el-tab-pane>
-                </el-tabs>
-              </div>
-            </template>
-            
-            <!-- 基本信息表单 -->
-            <div v-if="activeTab === 'basic-info'">
-              <el-form
-                ref="basicFormRef"
-                :model="basicForm"
-                :rules="basicRules"
-                label-width="100px"
-                label-position="left"
+            <h3 class="username">{{ userInfo.username }}</h3>
+            <div class="user-role">
+              <el-tag
+                v-for="role in userInfo.roles"
+                :key="role"
+                :type="getRoleTagType(role)"
+                class="role-tag"
               >
-                <el-form-item label="用户名" prop="username">
-                  <el-input v-model="basicForm.username" disabled />
-                </el-form-item>
-                <el-form-item label="邮箱" prop="email">
-                  <el-input v-model="basicForm.email" />
-                </el-form-item>
-                <el-form-item label="真实姓名" prop="realName">
-                  <el-input v-model="basicForm.realName" />
-                </el-form-item>
-                <el-form-item label="手机号码" prop="phone">
-                  <el-input v-model="basicForm.phone" />
-                </el-form-item>
-                <el-form-item label="个人简介" prop="bio">
-                  <el-input
-                    type="textarea"
-                    v-model="basicForm.bio"
-                    rows="4"
-                    placeholder="请输入个人简介"
-                  />
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="updateBasicInfo">保存修改</el-button>
-                  <el-button @click="resetBasicForm">重置</el-button>
-                </el-form-item>
-              </el-form>
+                {{ formatRoleName(role) }}
+              </el-tag>
             </div>
-            
-            <!-- 修改密码表单 -->
-            <div v-if="activeTab === 'change-password'">
-              <el-form
-                ref="passwordFormRef"
-                :model="passwordForm"
-                :rules="passwordRules"
-                label-width="100px"
-                label-position="left"
-              >
-                <el-form-item label="当前密码" prop="currentPassword">
-                  <el-input
-                    v-model="passwordForm.currentPassword"
-                    type="password"
-                    show-password
-                    placeholder="请输入当前密码"
-                  />
-                </el-form-item>
-                <el-form-item label="新密码" prop="newPassword">
-                  <el-input
-                    v-model="passwordForm.newPassword"
-                    type="password"
-                    show-password
-                    placeholder="请输入新密码"
-                  />
-                </el-form-item>
-                <el-form-item label="确认密码" prop="confirmPassword">
-                  <el-input
-                    v-model="passwordForm.confirmPassword"
-                    type="password"
-                    show-password
-                    placeholder="请再次输入新密码"
-                  />
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="updatePassword">更新密码</el-button>
-                  <el-button @click="resetPasswordForm">重置</el-button>
-                </el-form-item>
-              </el-form>
-            </div>
-            
-            <!-- 账户安全信息 -->
-            <div v-if="activeTab === 'security'">
-              <el-timeline>
-                <el-timeline-item
-                  v-for="(activity, index) in securityActivities"
-                  :key="index"
-                  :timestamp="activity.timestamp"
-                  :type="activity.type"
-                  :color="activity.color"
-                >
-                  {{ activity.content }}
-                </el-timeline-item>
-              </el-timeline>
-              
-              <div class="security-settings">
-                <h4>安全设置</h4>
-                <el-divider />
-                <div class="setting-item">
-                  <div class="setting-info">
-                    <div class="setting-title">两步验证</div>
-                    <div class="setting-desc">启用两步验证提高账户安全性</div>
-                  </div>
-                  <el-switch v-model="securitySettings.twoFactorAuth" />
-                </div>
-                <el-divider />
-                <div class="setting-item">
-                  <div class="setting-info">
-                    <div class="setting-title">登录通知</div>
-                    <div class="setting-desc">异地登录时通过邮件通知</div>
-                  </div>
-                  <el-switch v-model="securitySettings.loginNotification" />
-                </div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <!-- 头像上传对话框 -->
-      <el-dialog v-model="avatarDialogVisible" title="更换头像" width="400px">
-        <div class="avatar-upload">
-          <el-upload
-            class="avatar-uploader"
-            action="#"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleAvatarChange"
-          >
-            <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
-            <el-icon v-else class="avatar-uploader-icon"><el-icon-plus /></el-icon>
-          </el-upload>
-          <div class="upload-tip">
-            请选择一张图片作为您的头像
           </div>
+          
+          <div class="user-info">
+            <div class="info-item">
+              <span class="label">邮箱：</span>
+              <span class="value">{{ userInfo.email }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">注册时间：</span>
+              <span class="value">{{ userInfo.createdAt }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">最后登录：</span>
+              <span class="value">{{ userInfo.lastLogin }}</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      
+      <!-- 右侧信息编辑 -->
+      <el-col :sm="24" :md="16" :lg="18">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-tabs v-model="activeTab">
+                <el-tab-pane label="基本信息" name="basic-info"></el-tab-pane>
+                <el-tab-pane label="修改密码" name="change-password"></el-tab-pane>
+                <el-tab-pane label="账户安全" name="security"></el-tab-pane>
+              </el-tabs>
+            </div>
+          </template>
+          
+          <!-- 基本信息表单 -->
+          <div v-if="activeTab === 'basic-info'">
+            <el-form
+              ref="basicFormRef"
+              :model="basicForm"
+              :rules="basicRules"
+              label-width="100px"
+              label-position="left"
+            >
+              <el-form-item label="用户名" prop="username">
+                <el-input v-model="basicForm.username" disabled />
+              </el-form-item>
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="basicForm.email" />
+              </el-form-item>
+              <el-form-item label="真实姓名" prop="realName">
+                <el-input v-model="basicForm.realName" />
+              </el-form-item>
+              <el-form-item label="手机号码" prop="phone">
+                <el-input v-model="basicForm.phone" />
+              </el-form-item>
+              <el-form-item label="个人简介" prop="bio">
+                <el-input
+                  type="textarea"
+                  v-model="basicForm.bio"
+                  rows="4"
+                  placeholder="请输入个人简介"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="updateBasicInfo">保存修改</el-button>
+                <el-button @click="resetBasicForm">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          
+          <!-- 修改密码表单 -->
+          <div v-if="activeTab === 'change-password'">
+            <el-form
+              ref="passwordFormRef"
+              :model="passwordForm"
+              :rules="passwordRules"
+              label-width="100px"
+              label-position="left"
+            >
+              <el-form-item label="当前密码" prop="currentPassword">
+                <el-input
+                  v-model="passwordForm.currentPassword"
+                  type="password"
+                  show-password
+                  placeholder="请输入当前密码"
+                />
+              </el-form-item>
+              <el-form-item label="新密码" prop="newPassword">
+                <el-input
+                  v-model="passwordForm.newPassword"
+                  type="password"
+                  show-password
+                  placeholder="请输入新密码"
+                />
+              </el-form-item>
+              <el-form-item label="确认密码" prop="confirmPassword">
+                <el-input
+                  v-model="passwordForm.confirmPassword"
+                  type="password"
+                  show-password
+                  placeholder="请再次输入新密码"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="updatePassword">更新密码</el-button>
+                <el-button @click="resetPasswordForm">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          
+          <!-- 账户安全信息 -->
+          <div v-if="activeTab === 'security'">
+            <el-timeline>
+              <el-timeline-item
+                v-for="(activity, index) in securityActivities"
+                :key="index"
+                :timestamp="activity.timestamp"
+                :type="activity.type"
+                :color="activity.color"
+              >
+                {{ activity.content }}
+              </el-timeline-item>
+            </el-timeline>
+            
+            <div class="security-settings">
+              <h4>安全设置</h4>
+              <el-divider />
+              <div class="setting-item">
+                <div class="setting-info">
+                  <div class="setting-title">两步验证</div>
+                  <div class="setting-desc">启用两步验证提高账户安全性</div>
+                </div>
+                <el-switch v-model="securitySettings.twoFactorAuth" />
+              </div>
+              <el-divider />
+              <div class="setting-item">
+                <div class="setting-info">
+                  <div class="setting-title">登录通知</div>
+                  <div class="setting-desc">异地登录时通过邮件通知</div>
+                </div>
+                <el-switch v-model="securitySettings.loginNotification" />
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 头像上传对话框 -->
+    <el-dialog v-model="avatarDialogVisible" title="更换头像" width="400px">
+      <div class="avatar-upload">
+        <el-upload
+          class="avatar-uploader"
+          action="#"
+          :auto-upload="false"
+          :show-file-list="false"
+          :on-change="handleAvatarChange"
+        >
+          <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
+          <el-icon v-else class="avatar-uploader-icon"><el-icon-plus /></el-icon>
+        </el-upload>
+        <div class="upload-tip">
+          请选择一张图片作为您的头像
         </div>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="avatarDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveAvatar">确定</el-button>
-          </span>
-        </template>
-      </el-dialog>
-    </div>
-  </admin-layout>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="avatarDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveAvatar">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useAuthStore } from '../../stores/auth';
-import AdminLayout from '../../components/AdminLayout.vue';
 
 const authStore = useAuthStore();
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
