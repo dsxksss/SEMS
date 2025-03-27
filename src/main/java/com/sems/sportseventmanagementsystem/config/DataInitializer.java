@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Random;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -40,6 +41,8 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private PasswordEncoder encoder;
 
+    private final Random random = new Random();
+
     @Override
     public void run(String... args) throws Exception {
         // 只有当没有角色数据时才初始化
@@ -53,17 +56,18 @@ public class DataInitializer implements CommandLineRunner {
                 initEvents(admin);
                 initAnnouncements(admin);
                 
-                // 获取一个赛事用于初始化报名和结果数据
+                // 获取所有赛事和用户
                 List<Event> events = eventRepository.findAll();
-                if (!events.isEmpty()) {
-                    Event event = events.get(0);
-                    
-                    // 获取运动员进行报名初始化
-                    User athlete = userRepository.findByUsername("athlete").orElse(null);
-                    if (athlete != null) {
-                        initRegistrations(athlete, event);
-                        initResults(athlete, event, admin);
-                    }
+                List<User> athletes = userRepository.findAll().stream()
+                    .filter(user -> user.getRoles().stream()
+                        .anyMatch(role -> role.getName() == ERole.ROLE_ATHLETE))
+                    .toList();
+                
+                if (!events.isEmpty() && !athletes.isEmpty()) {
+                    // 为每个运动员随机报名一些赛事
+                    initRegistrations(athletes, events);
+                    // 为已完成的赛事添加成绩
+                    initResults(athletes, events, admin);
                 }
             }
         }
@@ -96,39 +100,46 @@ public class DataInitializer implements CommandLineRunner {
         
         userRepository.save(admin);
         
-        // 创建运动员
-        User athlete = new User();
-        athlete.setUsername("athlete");
-        athlete.setEmail("athlete@example.com");
-        athlete.setPassword(encoder.encode("athlete123"));
-        athlete.setPhone("13900139000");
-        athlete.setRealName("张三");
-        athlete.setEnabled(true);
+        // 创建多个管理员
+        createUserWithRole("admin2", "管理员2", ERole.ROLE_ADMIN);
+        createUserWithRole("admin3", "管理员3", ERole.ROLE_ADMIN);
         
-        Role athleteRole = roleRepository.findByName(ERole.ROLE_ATHLETE)
+        // 创建多个运动员
+        createUserWithRole("athlete", "张三", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete2", "李四", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete3", "王五", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete4", "赵六", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete5", "钱七", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete6", "孙八", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete7", "周九", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete8", "吴十", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete9", "郑十一", ERole.ROLE_ATHLETE);
+        createUserWithRole("athlete10", "王十二", ERole.ROLE_ATHLETE);
+        
+        // 创建多个观众
+        createUserWithRole("spectator", "观众1", ERole.ROLE_SPECTATOR);
+        createUserWithRole("spectator2", "观众2", ERole.ROLE_SPECTATOR);
+        createUserWithRole("spectator3", "观众3", ERole.ROLE_SPECTATOR);
+        createUserWithRole("spectator4", "观众4", ERole.ROLE_SPECTATOR);
+        createUserWithRole("spectator5", "观众5", ERole.ROLE_SPECTATOR);
+    }
+    
+    private void createUserWithRole(String username, String realName, ERole roleType) {
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(username + "@example.com");
+        user.setPassword(encoder.encode(username + "123"));
+        user.setPhone("139" + String.format("%08d", random.nextInt(100000000)));
+        user.setRealName(realName);
+        user.setEnabled(true);
+        
+        Role role = roleRepository.findByName(roleType)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
-        Set<Role> athleteRoles = new HashSet<>();
-        athleteRoles.add(athleteRole);
-        athlete.setRoles(athleteRoles);
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
+        user.setRoles(roles);
         
-        userRepository.save(athlete);
-        
-        // 创建观众
-        User spectator = new User();
-        spectator.setUsername("spectator");
-        spectator.setEmail("spectator@example.com");
-        spectator.setPassword(encoder.encode("spectator123"));
-        spectator.setPhone("13700137000");
-        spectator.setRealName("李四");
-        spectator.setEnabled(true);
-        
-        Role spectatorRole = roleRepository.findByName(ERole.ROLE_SPECTATOR)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
-        Set<Role> spectatorRoles = new HashSet<>();
-        spectatorRoles.add(spectatorRole);
-        spectator.setRoles(spectatorRoles);
-        
-        userRepository.save(spectator);
+        userRepository.save(user);
     }
 
     private void initCategories() {
@@ -160,50 +171,66 @@ public class DataInitializer implements CommandLineRunner {
         List<EventCategory> categories = categoryRepository.findAll();
         LocalDateTime now = LocalDateTime.now();
         
-        // 添加即将开始的赛事
-        Event upcoming = new Event();
-        upcoming.setName("2024校园足球联赛");
-        upcoming.setDescription("2024年校园足球联赛，欢迎各院系组队参加！");
-        upcoming.setStartTime(now.plusDays(7));
-        upcoming.setEndTime(now.plusDays(14));
-        upcoming.setLocation("北校区足球场");
-        upcoming.setMaxParticipants(16);
-        upcoming.setCurrentParticipants(8);
-        upcoming.setIsActive(true);
-        upcoming.setStatus(EventStatus.PENDING);
-        upcoming.setCategory(categories.get(0)); // 足球
-        upcoming.setCreatedBy(admin);
-        eventRepository.save(upcoming);
+        // 添加更多的即将开始的赛事
+        createEvent("2024校园足球联赛", "2024年校园足球联赛，欢迎各院系组队参加！", 
+                now.plusDays(7), now.plusDays(14), "北校区足球场", 16, 8, 
+                EventStatus.PENDING, categories.get(0), admin);
         
-        // 添加进行中的赛事
-        Event ongoing = new Event();
-        ongoing.setName("2024羽毛球校际邀请赛");
-        ongoing.setDescription("邀请周边高校参加的羽毛球友谊赛");
-        ongoing.setStartTime(now.minusDays(2));
-        ongoing.setEndTime(now.plusDays(3));
-        ongoing.setLocation("主体育馆");
-        ongoing.setMaxParticipants(32);
-        ongoing.setCurrentParticipants(28);
-        ongoing.setIsActive(true);
-        ongoing.setStatus(EventStatus.ONGOING);
-        ongoing.setCategory(categories.get(2)); // 羽毛球
-        ongoing.setCreatedBy(admin);
-        eventRepository.save(ongoing);
+        createEvent("篮球三人赛", "三人制篮球比赛，快速、激烈的对抗", 
+                now.plusDays(5), now.plusDays(6), "东校区篮球场", 24, 12, 
+                EventStatus.PENDING, categories.get(1), admin);
         
-        // 添加已完成的赛事
-        Event completed = new Event();
-        completed.setName("2023年田径运动会");
-        completed.setDescription("年度田径运动会，包括短跑、长跑、跳高、跳远等项目");
-        completed.setStartTime(now.minusDays(30));
-        completed.setEndTime(now.minusDays(28));
-        completed.setLocation("田径场");
-        completed.setMaxParticipants(100);
-        completed.setCurrentParticipants(95);
-        completed.setIsActive(true);
-        completed.setStatus(EventStatus.COMPLETED);
-        completed.setCategory(categories.get(6)); // 田径
-        completed.setCreatedBy(admin);
-        eventRepository.save(completed);
+        createEvent("新生游泳挑战赛", "针对大一新生的游泳入门赛事", 
+                now.plusDays(10), now.plusDays(11), "游泳馆", 30, 15, 
+                EventStatus.PENDING, categories.get(5), admin);
+        
+        // 添加更多进行中的赛事
+        createEvent("2024羽毛球校际邀请赛", "邀请周边高校参加的羽毛球友谊赛", 
+                now.minusDays(2), now.plusDays(3), "主体育馆", 32, 28, 
+                EventStatus.ONGOING, categories.get(2), admin);
+        
+        createEvent("乒乓球单打锦标赛", "校内乒乓球精英对决", 
+                now.minusDays(1), now.plusDays(2), "乒乓球馆", 16, 16, 
+                EventStatus.ONGOING, categories.get(3), admin);
+        
+        createEvent("网球双打友谊赛", "校际网球双打比赛", 
+                now.minusDays(3), now.plusDays(1), "网球场", 20, 18, 
+                EventStatus.ONGOING, categories.get(4), admin);
+        
+        // 添加更多已完成的赛事
+        createEvent("2023年田径运动会", "年度田径运动会，包括短跑、长跑、跳高、跳远等项目", 
+                now.minusDays(30), now.minusDays(28), "田径场", 100, 95, 
+                EventStatus.COMPLETED, categories.get(6), admin);
+        
+        createEvent("冬季长跑挑战赛", "5公里和10公里长跑比赛", 
+                now.minusDays(45), now.minusDays(45), "环校跑道", 50, 48, 
+                EventStatus.COMPLETED, categories.get(6), admin);
+        
+        createEvent("羽毛球单打秋季赛", "校内羽毛球单打比赛", 
+                now.minusDays(60), now.minusDays(58), "体育馆", 32, 30, 
+                EventStatus.COMPLETED, categories.get(2), admin);
+                
+        createEvent("篮球校队选拔赛", "校队球员选拔测试", 
+                now.minusDays(90), now.minusDays(88), "主体育馆", 40, 38, 
+                EventStatus.COMPLETED, categories.get(1), admin);
+    }
+    
+    private void createEvent(String name, String description, LocalDateTime startTime, LocalDateTime endTime, 
+                           String location, int maxParticipants, int currentParticipants, 
+                           EventStatus status, EventCategory category, User admin) {
+        Event event = new Event();
+        event.setName(name);
+        event.setDescription(description);
+        event.setStartTime(startTime);
+        event.setEndTime(endTime);
+        event.setLocation(location);
+        event.setMaxParticipants(maxParticipants);
+        event.setCurrentParticipants(currentParticipants);
+        event.setIsActive(true);
+        event.setStatus(status);
+        event.setCategory(category);
+        event.setCreatedBy(admin);
+        eventRepository.save(event);
     }
 
     private void initAnnouncements(User admin) {
@@ -211,57 +238,166 @@ public class DataInitializer implements CommandLineRunner {
         
         List<Event> events = eventRepository.findAll();
         
-        Announcement announcement1 = new Announcement();
-        announcement1.setTitle("关于2024年体育赛事安排的通知");
-        announcement1.setContent("各位师生，2024年体育赛事安排已确定，请关注网站更新，及时报名参加您感兴趣的赛事活动。");
-        announcement1.setIsPublished(true);
-        announcement1.setCreatedBy(admin);
-        announcementRepository.save(announcement1);
-        
-        if (!events.isEmpty()) {
-            Announcement announcement2 = new Announcement();
-            announcement2.setTitle("足球联赛报名开始通知");
-            announcement2.setContent("2024校园足球联赛报名现已开始，请各参赛队伍于5月10日前完成报名手续。");
-            announcement2.setIsPublished(true);
-            announcement2.setCreatedBy(admin);
-            announcement2.setEvent(events.get(0));
-            announcementRepository.save(announcement2);
+        // 全局公告
+        createAnnouncement(
+            "关于2024年体育赛事安排的通知", 
+            "各位师生，2024年体育赛事安排已确定，请关注网站更新，及时报名参加您感兴趣的赛事活动。", 
+            true, admin, null);
             
-            Announcement announcement3 = new Announcement();
-            announcement3.setTitle("羽毛球邀请赛赛程公布");
-            announcement3.setContent("2024羽毛球校际邀请赛的详细赛程安排已公布，请参赛选手查看并准时参加比赛。");
-            announcement3.setIsPublished(true);
-            announcement3.setCreatedBy(admin);
-            announcement3.setEvent(events.get(1));
-            announcementRepository.save(announcement3);
+        createAnnouncement(
+            "体育场馆维护通知", 
+            "下周一至周三，主体育馆将进行年度维护，期间所有赛事和训练将暂停。", 
+            true, admin, null);
+            
+        createAnnouncement(
+            "运动员体检通知", 
+            "所有参加正式比赛的运动员需在赛前一周内完成体检，请各位运动员提前安排时间。", 
+            true, admin, null);
+        
+        // 赛事相关公告
+        if (!events.isEmpty()) {
+            for (int i = 0; i < Math.min(events.size(), 6); i++) {
+                Event event = events.get(i);
+                String title = "关于" + event.getName() + "的通知";
+                String content = "亲爱的参赛者，" + event.getName() + "将于" + 
+                    event.getStartTime().toLocalDate() + "开始，请做好准备工作。比赛地点：" + 
+                    event.getLocation() + "。";
+                
+                createAnnouncement(title, content, true, admin, event);
+            }
+        }
+    }
+    
+    private void createAnnouncement(String title, String content, boolean isPublished, User admin, Event event) {
+        Announcement announcement = new Announcement();
+        announcement.setTitle(title);
+        announcement.setContent(content);
+        announcement.setIsPublished(isPublished);
+        announcement.setCreatedBy(admin);
+        announcement.setEvent(event);
+        announcementRepository.save(announcement);
+    }
+
+    private void initRegistrations(List<User> athletes, List<Event> events) {
+        System.out.println("Initializing registrations...");
+        
+        for (User athlete : athletes) {
+            // 为每个运动员随机报名2-5个赛事
+            int registrationCount = 2 + random.nextInt(4);
+            
+            for (int i = 0; i < registrationCount; i++) {
+                Event event = events.get(random.nextInt(events.size()));
+                
+                // 避免重复报名
+                if (!registrationRepository.existsByUserIdAndEventId(athlete.getId(), event.getId())) {
+                    Registration registration = new Registration();
+                    registration.setUser(athlete);
+                    registration.setEvent(event);
+                    
+                    // 随机设置报名状态
+                    RegistrationStatus[] statuses = {
+                        RegistrationStatus.PENDING, 
+                        RegistrationStatus.APPROVED, 
+                        RegistrationStatus.REJECTED, 
+                        RegistrationStatus.CANCELLED
+                    };
+                    // 已完成的赛事报名为已批准
+                    if (event.getStatus() == EventStatus.COMPLETED) {
+                        registration.setStatus(RegistrationStatus.APPROVED);
+                    } else {
+                        // 其他赛事随机状态，但70%概率为已批准
+                        int randomIndex = random.nextInt(10) < 7 ? 1 : random.nextInt(statuses.length);
+                        registration.setStatus(statuses[randomIndex]);
+                    }
+                    
+                    registration.setContactPhone(athlete.getPhone());
+                    registration.setRemarks("希望参加" + event.getName() + "比赛");
+                    registration.setHasPaid(random.nextBoolean());
+                    
+                    registrationRepository.save(registration);
+                }
+            }
         }
     }
 
-    private void initRegistrations(User athlete, Event event) {
-        System.out.println("Initializing registrations...");
-        
-        Registration registration = new Registration();
-        registration.setUser(athlete);
-        registration.setEvent(event);
-        registration.setStatus(RegistrationStatus.APPROVED);
-        registration.setContactPhone(athlete.getPhone());
-        registration.setRemarks("我希望参加本次比赛");
-        registration.setHasPaid(true);
-        
-        registrationRepository.save(registration);
-    }
-
-    private void initResults(User athlete, Event event, User admin) {
+    private void initResults(List<User> athletes, List<Event> events, User admin) {
         System.out.println("Initializing results...");
         
-        EventResult result = new EventResult();
-        result.setEvent(event);
-        result.setAthlete(athlete);
-        result.setRank(1);
-        result.setScore("90");
-        result.setRemarks("优秀表现");
-        result.setRecordedBy(admin);
+        // 仅为已完成的赛事添加成绩
+        List<Event> completedEvents = events.stream()
+                .filter(event -> event.getStatus() == EventStatus.COMPLETED)
+                .toList();
         
-        resultRepository.save(result);
+        for (Event event : completedEvents) {
+            // 获取该赛事已批准的报名
+            List<Registration> approvedRegistrations = registrationRepository.findByEventId(event.getId())
+                    .stream()
+                    .filter(reg -> reg.getStatus() == RegistrationStatus.APPROVED)
+                    .toList();
+            
+            // 如果没有已批准的报名，则为一些运动员随机创建成绩
+            if (approvedRegistrations.isEmpty()) {
+                int resultsCount = 5 + random.nextInt(10);
+                
+                for (int i = 0; i < Math.min(resultsCount, athletes.size()); i++) {
+                    User athlete = athletes.get(i);
+                    createRandomResult(event, athlete, i + 1, admin);
+                }
+            } else {
+                // 为已批准的报名创建成绩
+                for (int i = 0; i < approvedRegistrations.size(); i++) {
+                    Registration registration = approvedRegistrations.get(i);
+                    createRandomResult(event, registration.getUser(), i + 1, admin);
+                }
+            }
+        }
+    }
+    
+    private void createRandomResult(Event event, User athlete, int rank, User admin) {
+        // 避免重复记录成绩
+        if (!resultRepository.existsByEventIdAndAthleteId(event.getId(), athlete.getId())) {
+            EventResult result = new EventResult();
+            result.setEvent(event);
+            result.setAthlete(athlete);
+            result.setRank(rank);
+            
+            // 根据不同的比赛类别生成不同的成绩格式
+            String categoryName = event.getCategory().getName();
+            String score;
+            
+            switch (categoryName) {
+                case "游泳":
+                case "田径":
+                    // 时间格式 (分:秒.毫秒)
+                    int minutes = random.nextInt(3);
+                    int seconds = random.nextInt(60);
+                    int milliseconds = random.nextInt(100);
+                    score = String.format("%d:%02d.%02d", minutes, seconds, milliseconds);
+                    break;
+                case "篮球":
+                    // 得分
+                    score = String.valueOf(10 + random.nextInt(30));
+                    break;
+                case "足球":
+                    // 进球数
+                    score = String.valueOf(random.nextInt(5));
+                    break;
+                default:
+                    // 默认得分制
+                    score = String.valueOf(70 + random.nextInt(30));
+            }
+            
+            result.setScore(score);
+            
+            // 随机评论
+            String[] remarkOptions = {
+                "出色的表现", "良好发挥", "稳定发挥", "技术精湛", "战术执行到位",
+                "有待提高", "潜力选手", "进步明显", "表现突出", "状态良好"
+            };
+            result.setRemarks(remarkOptions[random.nextInt(remarkOptions.length)]);
+            
+            result.setRecordedBy(admin);
+            resultRepository.save(result);
+        }
     }
 } 
