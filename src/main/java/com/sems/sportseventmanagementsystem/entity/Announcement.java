@@ -11,6 +11,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "announcements")
@@ -32,6 +34,14 @@ public class Announcement {
     private String content;
 
     private Boolean isPublished = true;
+    
+    @Column(nullable = true)
+    private String type;
+    
+    private Integer viewCount = 0;
+    
+    @Transient
+    private List<Object> attachments = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "created_by")

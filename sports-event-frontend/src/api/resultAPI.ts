@@ -40,6 +40,16 @@ export const resultAPI = {
   },
 
   /**
+   * 获取所有赛事结果
+   */
+  getAllResults: async (page = 0, size = 10) => {
+    const response = await apiClient.get<PaginatedResponse<EventResult>>('/results', {
+      params: { page, size }
+    });
+    return response.data;
+  },
+
+  /**
    * 管理员: 获取赛事成绩（分页）
    */
   getEventResults: async (eventId: number, page = 0, size = 10) => {

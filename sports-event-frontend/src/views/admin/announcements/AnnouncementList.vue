@@ -59,39 +59,37 @@
         <el-table-column prop="publishTime" label="发布时间" width="180" />
         <el-table-column prop="createdBy" label="创建者" width="120" />
         <el-table-column prop="viewCount" label="浏览量" width="100" />
-        <el-table-column label="操作" fixed="right" width="220">
+        <el-table-column label="操作" fixed="right" width="280">
           <template #default="scope">
-            <el-button
-              size="small"
-              type="primary"
-              @click="handleView(scope.row)"
-            >查看</el-button>
-            <el-button
-              class="ml-2"
-              size="small"
-              type="success"
-              @click="handleEdit(scope.row)"
-            >编辑</el-button>
-            <el-button
-              v-if="scope.row.status !== 'PUBLISHED'"
-              class="ml-2"
-              size="small"
-              type="warning"
-              @click="handlePublish(scope.row)"
-            >发布</el-button>
-            <el-button
-              v-else
-              class="ml-2"
-              size="small"
-              type="info"
-              @click="handleSetExpired(scope.row)"
-            >撤回</el-button>
-            <el-button
-              class="ml-2"
-              size="small"
-              type="danger"
-              @click="handleDelete(scope.row)"
-            >删除</el-button>
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                type="primary"
+                @click="handleView(scope.row)"
+              >查看</el-button>
+              <el-button
+                size="small"
+                type="success"
+                @click="handleEdit(scope.row)"
+              >编辑</el-button>
+              <el-button
+                v-if="scope.row.status !== 'PUBLISHED'"
+                size="small"
+                type="warning"
+                @click="handlePublish(scope.row)"
+              >发布</el-button>
+              <el-button
+                v-else
+                size="small"
+                type="info"
+                @click="handleSetExpired(scope.row)"
+              >撤回</el-button>
+              <el-button
+                size="small"
+                type="danger"
+                @click="handleDelete(scope.row)"
+              >删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -190,10 +188,13 @@
         
         <el-form-item label="附件">
           <el-upload
-            action="#"
-            :auto-upload="false"
+            action="/api/files/upload"
+            :headers="{ Authorization: `Bearer ${authStore.token}` }"
+            :auto-upload="true"
             :file-list="fileList"
-            :on-change="handleFileChange"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :on-remove="handleFileRemove"
             multiple
           >
             <el-button type="primary">选择文件</el-button>
@@ -235,6 +236,10 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, FormInstance, FormRules } from 'element-plus';
 import dayjs from 'dayjs';
 import { announcementAPI } from '../../../api';
+import { ElMessageBox } from 'element-plus';
+import { useAuthStore } from '../../../stores/auth';
+
+const authStore = useAuthStore();
 
 interface Attachment {
   name: string;
@@ -347,13 +352,13 @@ const fetchAnnouncementList = async () => {
       id: ann.id,
       title: ann.title,
       content: ann.content,
-      type: ann.event ? 'EVENT' : 'SYSTEM',
+      type: ann.event ? 'EVENT' : (ann.type || 'SYSTEM'),
       status: ann.isPublished ? 'PUBLISHED' : 'DRAFT',
-      createTime: dayjs(ann.createdAt).format('YYYY-MM-DD HH:mm:ss'),
-      publishTime: ann.isPublished ? dayjs(ann.updatedAt).format('YYYY-MM-DD HH:mm:ss') : undefined,
-      createdBy: ann.author?.username || 'admin',
-      viewCount: 0, // 假设API暂时没有提供浏览量数据
-      attachments: [] // 假设API暂时没有提供附件数据
+      createTime: ann.createdAt ? dayjs(ann.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+      publishTime: ann.isPublished && ann.updatedAt ? dayjs(ann.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+      createdBy: ann.createdBy?.username || '管理员',
+      viewCount: ann.viewCount || 0,
+      attachments: ann.attachments || []
     }));
   } catch (error) {
     console.error('获取公告列表失败', error);
@@ -452,13 +457,13 @@ const handleView = async (row: Announcement) => {
       id: announcement.id,
       title: announcement.title, 
       content: announcement.content,
-      type: announcement.event ? 'EVENT' : 'SYSTEM',
+      type: announcement.event ? 'EVENT' : (announcement.type || 'SYSTEM'),
       status: announcement.isPublished ? 'PUBLISHED' : 'DRAFT',
-      createTime: dayjs(announcement.createdAt).format('YYYY-MM-DD HH:mm:ss'),
-      publishTime: announcement.isPublished ? dayjs(announcement.updatedAt).format('YYYY-MM-DD HH:mm:ss') : undefined,
-      createdBy: announcement.author?.username || '管理员',
-      viewCount: 0,
-      attachments: [] // 当前可能不支持附件
+      createTime: announcement.createdAt ? dayjs(announcement.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+      publishTime: announcement.isPublished && announcement.updatedAt ? dayjs(announcement.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+      createdBy: announcement.createdBy?.username || '管理员',
+      viewCount: announcement.viewCount || 0,
+      attachments: announcement.attachments || []
     };
     
     detailDialogVisible.value = true;
@@ -489,12 +494,15 @@ const handleEdit = async (row: Announcement) => {
     announcementForm.id = announcement.id;
     announcementForm.title = announcement.title;
     announcementForm.content = announcement.content;
-    announcementForm.type = announcement.event ? 'EVENT' : 'SYSTEM';
+    announcementForm.type = announcement.event ? 'EVENT' : (announcement.type || 'SYSTEM');
     announcementForm.status = announcement.isPublished ? 'PUBLISHED' : 'DRAFT';
     
-    // 当前可能不支持附件
-    announcementForm.attachments = [];
-    fileList.value = [];
+    // 处理附件
+    announcementForm.attachments = announcement.attachments || [];
+    fileList.value = announcementForm.attachments.map(a => ({
+      name: a.name,
+      url: a.url
+    }));
     
     formDialogVisible.value = true;
   } catch (error) {
@@ -503,34 +511,58 @@ const handleEdit = async (row: Announcement) => {
   }
 };
 
-// 发布草稿公告
-const handlePublish = async (row: Announcement) => {
-  try {
-    // 调用API更新公告发布状态
-    await announcementAPI.toggleAnnouncementPublished(row.id, true);
-    ElMessage.success(`公告"${row.title}"已发布`);
-    
-    // 刷新列表
-    fetchAnnouncementList();
-  } catch (error) {
-    console.error('发布公告失败', error);
-    ElMessage.error('发布公告失败，请重试');
-  }
+// 发布公告
+const handlePublish = (row: Announcement) => {
+  ElMessageBox.confirm(
+    `确定要发布公告 "${row.title}" 吗？`,
+    '发布确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info'
+    }
+  )
+    .then(async () => {
+      try {
+        // 使用专用的发布API
+        await announcementAPI.toggleAnnouncementPublished(row.id, true);
+        ElMessage.success('公告发布成功');
+        fetchAnnouncementList();
+      } catch (error) {
+        console.error('公告发布失败', error);
+        ElMessage.error('公告发布失败，请重试');
+      }
+    })
+    .catch(() => {
+      // 用户取消操作
+    });
 };
 
-// 设置公告为过期/撤回
-const handleSetExpired = async (row: Announcement) => {
-  try {
-    // 调用API撤回公告
-    await announcementAPI.toggleAnnouncementPublished(row.id, false);
-    ElMessage.success(`公告"${row.title}"已撤回`);
-    
-    // 刷新列表
-    fetchAnnouncementList();
-  } catch (error) {
-    console.error('撤回公告失败', error);
-    ElMessage.error('撤回公告失败，请重试');
-  }
+// 撤回公告（设为已过期）
+const handleSetExpired = (row: Announcement) => {
+  ElMessageBox.confirm(
+    `确定要撤回公告 "${row.title}" 吗？`,
+    '撤回确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  )
+    .then(async () => {
+      try {
+        // 使用专用的发布API，设置为未发布
+        await announcementAPI.toggleAnnouncementPublished(row.id, false);
+        ElMessage.success('公告已撤回');
+        fetchAnnouncementList();
+      } catch (error) {
+        console.error('公告撤回失败', error);
+        ElMessage.error('公告撤回失败，请重试');
+      }
+    })
+    .catch(() => {
+      // 用户取消操作
+    });
 };
 
 // 删除公告
@@ -582,7 +614,33 @@ const resetAnnouncementForm = () => {
 
 // 处理文件变更
 const handleFileChange = (file: any, fileList: any[]) => {
+  console.log('File changed:', file);
   fileList.value = fileList;
+};
+
+// 处理文件上传成功
+const handleUploadSuccess = (response: any, file: any) => {
+  console.log('Upload success:', response);
+  announcementForm.attachments.push({
+    name: file.name,
+    url: response.url || `/api/files/download/${response.id || response.fileId || response.filename}`,
+    size: file.size
+  });
+  ElMessage.success(`文件 ${file.name} 上传成功`);
+};
+
+// 处理文件上传失败
+const handleUploadError = (error: any, file: any) => {
+  console.error('Upload error:', error);
+  ElMessage.error(`文件 ${file.name} 上传失败`);
+};
+
+// 处理文件移除
+const handleFileRemove = (file: any) => {
+  const index = announcementForm.attachments.findIndex(item => item.name === file.name);
+  if (index !== -1) {
+    announcementForm.attachments.splice(index, 1);
+  }
 };
 
 // 提交公告表单
@@ -593,11 +651,13 @@ const submitAnnouncementForm = async () => {
     if (valid) {
       submitting.value = true;
       try {
-        // 处理附件 (当前API可能不支持附件，等待后端支持)
+        // 准备公告数据
         const announcementData = {
           title: announcementForm.title,
           content: announcementForm.content,
-          isPublished: announcementForm.status === 'PUBLISHED'
+          type: announcementForm.type,
+          isPublished: announcementForm.status === 'PUBLISHED',
+          attachments: announcementForm.attachments
         };
         
         if (isEdit.value) {
@@ -734,5 +794,36 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* 新增样式 */
+.flex {
+  display: flex;
+}
+
+.space-x-2 > * + * {
+  margin-left: 8px;
+}
+
+.flex .el-button {
+  margin-left: 0;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: flex-start;
+}
+
+.action-buttons .el-button {
+  margin-left: 0;
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+/* 确保最后一个按钮没有右边距 */
+.action-buttons .el-button:last-child {
+  margin-right: 0;
 }
 </style> 

@@ -1,21 +1,34 @@
 import apiClient from './axios';
 import type { PaginatedResponse } from './eventsAPI';
 
+export interface Attachment {
+  name: string;
+  url: string;
+  size?: number;
+}
+
 export interface Announcement {
   id: number;
   title: string;
   content: string;
+  type?: string;
   event?: {
     id: number;
     name: string;
   };
-  author: {
+  author?: {
+    id: number;
+    username: string;
+  };
+  createdBy?: {
     id: number;
     username: string;
   };
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+  viewCount?: number;
+  attachments?: Attachment[];
 }
 
 export const announcementAPI = {
@@ -49,7 +62,7 @@ export const announcementAPI = {
    * 获取公告详情
    */
   getAnnouncementById: async (id: number) => {
-    const response = await apiClient.get<Announcement>(`/announcements/public/${id}`);
+    const response = await apiClient.get<Announcement>(`/announcements/${id}`);
     return response.data;
   },
 
@@ -64,7 +77,7 @@ export const announcementAPI = {
   /**
    * 管理员: 创建公告
    */
-  createAnnouncement: async (announcement: Omit<Announcement, 'id' | 'author' | 'createdAt' | 'updatedAt'>) => {
+  createAnnouncement: async (announcement: Partial<Announcement>) => {
     const response = await apiClient.post<Announcement>('/announcements', announcement);
     return response.data;
   },
@@ -81,7 +94,7 @@ export const announcementAPI = {
    * 管理员: 发布/撤回公告
    */
   toggleAnnouncementPublished: async (id: number, isPublished: boolean) => {
-    const response = await apiClient.put<Announcement>(`/announcements/${id}/publish`, { isPublished });
+    const response = await apiClient.put<Announcement>(`/announcements/${id}/publish`, { published: isPublished });
     return response.data;
   },
 

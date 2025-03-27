@@ -409,8 +409,11 @@ const saveUser = async () => {
 };
 
 // 获取角色对应的标签类型
-const getRoleTagType = (role: string) => {
-  switch (role) {
+const getRoleTagType = (role: any) => {
+  // 如果role是对象，则获取name属性
+  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  
+  switch (roleName) {
     case 'ROLE_ADMIN':
       return 'danger';
     case 'ROLE_USER':
@@ -425,8 +428,11 @@ const getRoleTagType = (role: string) => {
 };
 
 // 格式化角色名称
-const formatRoleName = (role: string) => {
-  switch (role) {
+const formatRoleName = (role: any) => {
+  // 如果role是对象，则获取name属性
+  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  
+  switch (roleName) {
     case 'ROLE_ADMIN':
       return '管理员';
     case 'ROLE_USER':
@@ -436,7 +442,7 @@ const formatRoleName = (role: string) => {
     case 'ROLE_SPECTATOR':
       return '观众';
     default:
-      return role;
+      return roleName;
   }
 };
 

@@ -410,10 +410,8 @@ const confirmStatusChange = async () => {
       // 取消赛事
       await eventsAPI.cancelEvent(statusChangeEvent.value.id);
     } else {
-      // 更新赛事状态
-      await eventsAPI.updateEvent(statusChangeEvent.value.id, { 
-        status: targetStatus.value
-      });
+      // 更新赛事状态 - 使用专用的状态更新API
+      await eventsAPI.updateEventStatus(statusChangeEvent.value.id, targetStatus.value);
     }
     
     ElMessage.success('赛事状态更新成功');

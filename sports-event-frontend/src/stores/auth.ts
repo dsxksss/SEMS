@@ -159,8 +159,25 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.isAuthenticated = false;
       
+      // 清除localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
       // 跳转到登录页
       router.push('/login');
+    },
+    
+    // 更新用户头像
+    updateUserAvatar(avatarUrl: string) {
+      if (this.user) {
+        this.user = {
+          ...this.user,
+          avatar: avatarUrl
+        };
+        
+        // 更新localStorage中的用户信息
+        localStorage.setItem('user', JSON.stringify(this.user));
+      }
     }
   }
 }); 

@@ -69,7 +69,18 @@ public class AnnouncementController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getAnnouncementById(@PathVariable Long id) {
         return announcementRepository.findById(id)
-                .map(ResponseEntity::ok)
+                .map(announcement -> {
+                    // 非管理员访问时增加浏览量
+                    boolean isAdmin = SecurityContextHolder.getContext().getAuthentication() != null &&
+                            SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    
+                    if (!isAdmin && announcement.getIsPublished()) {
+                        announcement.setViewCount(announcement.getViewCount() + 1);
+                        announcement = announcementRepository.save(announcement);
+                    }
+                    return ResponseEntity.ok(announcement);
+                })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -81,7 +92,10 @@ public class AnnouncementController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         announcement.setCreatedBy(user);
-        announcement.setIsPublished(true);
+        if (announcement.getIsPublished() == null) {
+            announcement.setIsPublished(true);
+        }
+        announcement.setViewCount(0);
         
         Announcement savedAnnouncement = announcementRepository.save(announcement);
         return ResponseEntity.ok(savedAnnouncement);
@@ -101,8 +115,14 @@ public class AnnouncementController {
                     if (announcementDetails.getIsPublished() != null) {
                         announcement.setIsPublished(announcementDetails.getIsPublished());
                     }
+                    if (announcementDetails.getType() != null) {
+                        announcement.setType(announcementDetails.getType());
+                    }
                     if (announcementDetails.getEvent() != null) {
                         announcement.setEvent(announcementDetails.getEvent());
+                    }
+                    if (announcementDetails.getAttachments() != null) {
+                        announcement.setAttachments(announcementDetails.getAttachments());
                     }
                     
                     return ResponseEntity.ok(announcementRepository.save(announcement));
@@ -119,5 +139,29 @@ public class AnnouncementController {
                     return ResponseEntity.ok(new MessageResponse("Announcement deleted successfully!"));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> toggleAnnouncementPublished(@PathVariable Long id, @RequestBody PublishRequest request) {
+        return announcementRepository.findById(id)
+                .map(announcement -> {
+                    announcement.setIsPublished(request.isPublished());
+                    Announcement savedAnnouncement = announcementRepository.save(announcement);
+                    return ResponseEntity.ok(savedAnnouncement);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    static class PublishRequest {
+        private boolean published;
+
+        public boolean isPublished() {
+            return published;
+        }
+
+        public void setPublished(boolean published) {
+            this.published = published;
+        }
     }
 } 

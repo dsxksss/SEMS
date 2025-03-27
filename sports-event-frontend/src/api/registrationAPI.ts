@@ -12,7 +12,7 @@ export interface Registration {
     username: string;
   };
   registrationTime: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -75,7 +75,7 @@ export const registrationAPI = {
   /**
    * 管理员: 更新报名状态
    */
-  updateRegistrationStatus: async (registrationId: number, status: 'APPROVED' | 'REJECTED', notes?: string) => {
+  updateRegistrationStatus: async (registrationId: number, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED', notes?: string) => {
     const response = await apiClient.put<Registration>(`/registrations/${registrationId}/status`, {
       status,
       notes

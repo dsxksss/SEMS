@@ -124,6 +124,14 @@ export const eventsAPI = {
   },
 
   /**
+   * 管理员: 更新事件状态
+   */
+  updateEventStatus: async (id: number, status: 'PENDING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED') => {
+    const response = await apiClient.put<Event>(`/events/${id}/status`, { status });
+    return response.data;
+  },
+
+  /**
    * 管理员: 取消事件
    */
   cancelEvent: async (id: number) => {

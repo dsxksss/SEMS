@@ -20,7 +20,7 @@
             <el-option label="待审核" value="PENDING" />
             <el-option label="已通过" value="APPROVED" />
             <el-option label="已拒绝" value="REJECTED" />
-            <el-option label="已取消" value="CANCELED" />
+            <el-option label="已取消" value="CANCELLED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -84,7 +84,7 @@
               v-if="['PENDING', 'APPROVED'].includes(scope.row.status)"
               size="small"
               type="warning"
-              @click="handleChangeStatus(scope.row, 'CANCELED')"
+              @click="handleChangeStatus(scope.row, 'CANCELLED')"
               >取消</el-button>
           </template>
         </el-table-column>
@@ -144,7 +144,7 @@
           <el-button
             v-if="['PENDING', 'APPROVED'].includes(currentRegistration.status)"
             type="warning"
-            @click="handleChangeStatus(currentRegistration, 'CANCELED')"
+            @click="handleChangeStatus(currentRegistration, 'CANCELLED')"
             >取消</el-button>
         </div>
       </div>
@@ -243,7 +243,7 @@ const statusChangeMessage = computed(() => {
       return `确定要通过 ${statusChangeRegistration.value.athleteName} 的报名申请吗？`;
     case 'REJECTED':
       return `确定要拒绝 ${statusChangeRegistration.value.athleteName} 的报名申请吗？`;
-    case 'CANCELED':
+    case 'CANCELLED':
       return `确定要取消 ${statusChangeRegistration.value.athleteName} 的报名吗？`;
     default:
       return `确定要修改 ${statusChangeRegistration.value.athleteName} 的报名状态吗？`;
@@ -372,7 +372,7 @@ const formatStatus = (status: string) => {
       return '已通过';
     case 'REJECTED':
       return '已拒绝';
-    case 'CANCELED':
+    case 'CANCELLED':
       return '已取消';
     default:
       return status;
@@ -388,7 +388,7 @@ const getStatusType = (status: string) => {
       return 'success';
     case 'REJECTED':
       return 'danger';
-    case 'CANCELED':
+    case 'CANCELLED':
       return 'info';
     default:
       return 'info';
@@ -420,7 +420,7 @@ const confirmStatusChange = async () => {
     // 调用API更新报名状态
     await registrationAPI.updateRegistrationStatus(
       statusChangeRegistration.value.id, 
-      targetStatus.value as 'APPROVED' | 'REJECTED',
+      targetStatus.value as 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED',
       notes
     );
     

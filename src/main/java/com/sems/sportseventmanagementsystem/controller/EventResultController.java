@@ -115,4 +115,15 @@ public class EventResultController {
         List<EventResult> results = resultRepository.findByAthleteId(userDetails.getId());
         return ResponseEntity.ok(results);
     }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<EventResult>> getAllResults(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<EventResult> results = resultRepository.findAll(pageable);
+        return ResponseEntity.ok(results);
+    }
 } 

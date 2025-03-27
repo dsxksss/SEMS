@@ -315,29 +315,35 @@ const fetchResultList = async () => {
       const response = await resultAPI.getEventResults(eventId, currentPage.value - 1, pageSize.value);
       results = response.content;
       total.value = response.totalElements;
+    } else if (filterForm.eventId) {
+      // 根据过滤表单中的赛事ID获取成绩
+      const response = await resultAPI.getEventResults(filterForm.eventId, currentPage.value - 1, pageSize.value);
+      results = response.content;
+      total.value = response.totalElements;
     } else {
-      // 获取所有赛事的成绩，这里需要遍历activeEvents中的所有赛事
-      const allResults = [];
-      for (const event of activeEvents.value) {
-        const response = await resultAPI.getEventResults(event.id, 0, 1000); // 获取大量数据以便筛选
-        allResults.push(...response.content);
-      }
+      // 获取所有赛事结果
+      const response = await resultAPI.getAllResults(currentPage.value - 1, pageSize.value);
       
-      // 根据搜索条件筛选
-      let filteredResults = allResults;
-      if (filterForm.eventId) {
-        filteredResults = filteredResults.filter(result => result.event.id === filterForm.eventId);
-      }
+      // 根据athleteName过滤结果（如果有）
+      let filteredResults = response.content;
       if (filterForm.athleteName) {
         filteredResults = filteredResults.filter(result => 
           result.athlete.username.toLowerCase().includes(filterForm.athleteName.toLowerCase())
         );
+        // 如果过滤后结果为空，但有赛事，则选择第一个赛事的结果
+        if (filteredResults.length === 0 && activeEvents.value.length > 0) {
+          const firstEventId = activeEvents.value[0].id;
+          activeTabName.value = firstEventId.toString();
+          const eventResponse = await resultAPI.getEventResults(firstEventId, currentPage.value - 1, pageSize.value);
+          results = eventResponse.content;
+          total.value = eventResponse.totalElements;
+          loading.value = false;
+          return; // 提前返回，避免后续处理
+        }
       }
       
-      // 手动分页
-      total.value = filteredResults.length;
-      const startIndex = (currentPage.value - 1) * pageSize.value;
-      results = filteredResults.slice(startIndex, startIndex + pageSize.value);
+      results = filteredResults;
+      total.value = response.totalElements;
     }
     
     // 格式化结果数据

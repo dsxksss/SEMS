@@ -7,6 +7,7 @@ export interface ExtendedUser extends User {
   status?: string; // 前端展示用
   enabled?: boolean; // 与后端对应
   createdAt?: string;
+  avatar?: string; // 用户头像URL
 }
 
 export const userAPI = {
@@ -23,6 +24,28 @@ export const userAPI = {
    */
   updateCurrentUser: async (userData: Partial<User>) => {
     const response = await apiClient.put<User>('/users/me', userData);
+    return response.data;
+  },
+
+  /**
+   * 上传用户头像
+   */
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    // 获取上传后的文件名，然后更新用户头像
+    if (response.data && response.data.filename) {
+      const avatarUrl = `/api/files/download/${response.data.filename}`;
+      await userAPI.updateCurrentUser({ avatar: avatarUrl });
+      return avatarUrl;
+    }
+    
     return response.data;
   },
 

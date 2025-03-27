@@ -2,7 +2,7 @@
   <div class="profile-container">
     <el-row :gutter="20">
       <!-- 左侧用户信息 -->
-      <el-col :sm="24" :md="8" :lg="6">
+      <el-col :sm="4" :md="8" :lg="6">
         <el-card shadow="hover" class="user-card">
           <div class="user-header">
             <div class="avatar-container">
@@ -175,10 +175,12 @@
       <div class="avatar-upload">
         <el-upload
           class="avatar-uploader"
-          action="#"
-          :auto-upload="false"
+          action="/api/files/upload"
+          :headers="{ Authorization: `Bearer ${authStore.token}` }"
           :show-file-list="false"
-          :on-change="handleAvatarChange"
+          :on-success="handleAvatarSuccess"
+          :before-upload="beforeAvatarUpload"
+          name="file"
         >
           <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
           <el-icon v-else class="avatar-uploader-icon"><el-icon-plus /></el-icon>
@@ -189,8 +191,7 @@
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="avatarDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveAvatar">确定</el-button>
+          <el-button @click="avatarDialogVisible = false">关闭</el-button>
         </span>
       </template>
     </el-dialog>
@@ -201,7 +202,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useAuthStore } from '../../stores/auth';
-import { userAPI } from '../../api/userAPI';
+import { userAPI, type ExtendedUser } from '../../api/userAPI';
 import dayjs from 'dayjs';
 
 const authStore = useAuthStore();
@@ -254,8 +255,8 @@ const updateBasicInfo = async () => {
     await userAPI.updateCurrentUser({
       email: basicForm.email,
       realName: basicForm.realName,
-      phone: basicForm.phone,
-      bio: basicForm.bio
+      phone: basicForm.phone
+      // bio 字段不在 User 类型中，不传递给 API
     });
     
     // 更新本地用户信息
@@ -294,7 +295,7 @@ const passwordRules = {
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
     {
-      validator: (rule: any, value: string, callback: Function) => {
+      validator: (_: any, value: string, callback: Function) => {
         if (value !== passwordForm.newPassword) {
           callback(new Error('两次输入的密码不一致'));
         } else {
@@ -352,7 +353,7 @@ const securitySettings = reactive({
 // 头像上传相关
 const avatarDialogVisible = ref(false);
 const avatarUrl = ref('');
-const avatarFile = ref(null);
+const uploadingAvatar = ref(false);
 
 // 打开头像上传对话框
 const handleChangeAvatar = () => {
@@ -360,48 +361,64 @@ const handleChangeAvatar = () => {
   avatarDialogVisible.value = true;
 };
 
-// 头像选择回调
-const handleAvatarChange = (file: any) => {
-  if (file.raw.type !== 'image/jpeg' && file.raw.type !== 'image/png') {
+// 上传前验证
+const beforeAvatarUpload = (file: File) => {
+  const isJPG = file.type === 'image/jpeg';
+  const isPNG = file.type === 'image/png';
+  const isLt2M = file.size / 1024 / 1024 < 2;
+
+  if (!isJPG && !isPNG) {
     ElMessage.error('头像只能是 JPG 或 PNG 格式!');
-    return;
+    return false;
   }
   
-  avatarFile.value = file.raw;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    avatarUrl.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file.raw);
+  if (!isLt2M) {
+    ElMessage.error('头像图片大小不能超过 2MB!');
+    return false;
+  }
+  
+  uploadingAvatar.value = true;
+  return true;
 };
 
-// 保存头像
-const saveAvatar = async () => {
-  if (!avatarUrl.value) {
-    ElMessage.warning('请先选择一张图片');
-    return;
+// 上传成功回调
+const handleAvatarSuccess = (response: any) => {
+  uploadingAvatar.value = false;
+  console.log('上传响应:', response);
+  
+  // 处理不同的响应格式
+  let avatarPath = '';
+  if (response && response.data) {
+    avatarPath = response.data;
+  } else if (response && response.filename) {
+    avatarPath = `/api/files/download/${response.filename}`;
+  } else if (response && response.id) {
+    avatarPath = `/api/files/download/${response.id}`;
+  } else if (response && response.fileId) {
+    avatarPath = `/api/files/download/${response.fileId}`;
+  } else if (typeof response === 'string') {
+    avatarPath = response;
   }
   
-  try {
-    // 这里应该调用API上传头像
-    // 需要后端提供上传头像的API接口
-    // const formData = new FormData();
-    // formData.append('avatar', avatarFile.value);
-    // await apiClient.post('/users/me/avatar', formData);
-    
+  if (avatarPath) {
     // 更新本地头像
-    userInfo.avatar = avatarUrl.value;
+    userInfo.avatar = avatarPath;
+    authStore.updateUserAvatar(avatarPath);
+    avatarUrl.value = avatarPath;
     ElMessage.success('头像更新成功');
     avatarDialogVisible.value = false;
-  } catch (error) {
-    console.error('头像上传失败', error);
+  } else {
     ElMessage.error('头像上传失败，请重试');
+    console.error('无效的响应格式:', response);
   }
 };
 
 // 获取角色对应的标签类型
-const getRoleTagType = (role: string) => {
-  switch (role) {
+const getRoleTagType = (role: any) => {
+  // 如果role是对象，则获取name属性
+  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  
+  switch (roleName) {
     case 'ROLE_ADMIN':
       return 'danger';
     case 'ROLE_USER':
@@ -416,8 +433,11 @@ const getRoleTagType = (role: string) => {
 };
 
 // 格式化角色名称
-const formatRoleName = (role: string) => {
-  switch (role) {
+const formatRoleName = (role: any) => {
+  // 如果role是对象，则获取name属性
+  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  
+  switch (roleName) {
     case 'ROLE_ADMIN':
       return '管理员';
     case 'ROLE_USER':
@@ -427,7 +447,7 @@ const formatRoleName = (role: string) => {
     case 'ROLE_SPECTATOR':
       return '观众';
     default:
-      return role;
+      return roleName;
   }
 };
 
@@ -437,20 +457,20 @@ onMounted(async () => {
     // 获取当前用户详细信息
     const userData = await userAPI.getCurrentUser();
     
-    // 更新用户信息
+    // 更新用户信息，处理 createdAt 和 lastLogin（在 ExtendedUser 中可能存在）
     Object.assign(userInfo, {
       ...userData,
-      createdAt: userData.createdAt ? dayjs(userData.createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知',
-      lastLogin: userData.lastLogin ? dayjs(userData.lastLogin).format('YYYY-MM-DD HH:mm:ss') : '未知'
+      createdAt: (userData as ExtendedUser).createdAt ? dayjs((userData as ExtendedUser).createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知',
+      lastLogin: '未知' // 后端API暂不提供 lastLogin
     });
     
     // 更新表单数据
     Object.assign(basicForm, {
       username: userData.username || '',
       email: userData.email || '',
-      realName: userData.realName || '',
+      realName: (userData as any).realName || '',
       phone: userData.phone || '',
-      bio: userData.bio || ''
+      bio: (userData as any).bio || ''
     });
     
     // 如果有登录历史记录API，获取安全记录
@@ -487,6 +507,12 @@ onMounted(async () => {
   border-bottom: 1px solid #f0f0f0;
 }
 
+.username {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 10px 0 5px;
+}
+
 .avatar-container {
   position: relative;
   margin-bottom: 15px;
@@ -498,13 +524,9 @@ onMounted(async () => {
   bottom: 0;
   border-radius: 50%;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.username {
-  margin: 10px 0;
-  font-size: 18px;
-  font-weight: 500;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
 }
 
 .user-role {
@@ -573,20 +595,21 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .avatar-uploader {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: 200px;
   border: 1px dashed #d9d9d9;
-  border-radius: 6px;
+  border-radius: 50%;
   cursor: pointer;
   position: relative;
   overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .avatar-uploader:hover {
@@ -596,8 +619,8 @@ onMounted(async () => {
 .avatar-uploader-icon {
   font-size: 28px;
   color: #8c939d;
-  width: 150px;
-  height: 150px;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -610,9 +633,10 @@ onMounted(async () => {
 }
 
 .upload-tip {
-  color: #909399;
-  font-size: 13px;
+  color: #606266;
+  font-size: 14px;
   text-align: center;
+  margin-top: 10px;
 }
 
 .dialog-footer {

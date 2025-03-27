@@ -133,20 +133,26 @@ public class RegistrationController {
     @Transactional
     public ResponseEntity<?> updateRegistrationStatus(
             @PathVariable Long id,
-            @RequestParam RegistrationStatus status) {
+            @RequestBody StatusUpdateRequest request) {
 
         return registrationRepository.findById(id)
                 .map(registration -> {
                     RegistrationStatus oldStatus = registration.getStatus();
-                    registration.setStatus(status);
+                    registration.setStatus(request.getStatus());
+                    
+                    // 如果提供了备注，更新备注
+                    if (request.getNotes() != null && !request.getNotes().isEmpty()) {
+                        registration.setRemarks(request.getNotes());
+                    }
+                    
                     registrationRepository.save(registration);
                     
                     // Update event participants count if needed
                     Event event = registration.getEvent();
-                    if (oldStatus != RegistrationStatus.APPROVED && status == RegistrationStatus.APPROVED) {
+                    if (oldStatus != RegistrationStatus.APPROVED && request.getStatus() == RegistrationStatus.APPROVED) {
                         event.setCurrentParticipants(event.getCurrentParticipants() + 1);
                         eventRepository.save(event);
-                    } else if (oldStatus == RegistrationStatus.APPROVED && status != RegistrationStatus.APPROVED) {
+                    } else if (oldStatus == RegistrationStatus.APPROVED && request.getStatus() != RegistrationStatus.APPROVED) {
                         event.setCurrentParticipants(Math.max(0, event.getCurrentParticipants() - 1));
                         eventRepository.save(event);
                     }
@@ -186,5 +192,27 @@ public class RegistrationController {
                     return ResponseEntity.ok(new MessageResponse("Registration cancelled successfully!"));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // 状态更新请求内部类
+    static class StatusUpdateRequest {
+        private RegistrationStatus status;
+        private String notes;
+
+        public RegistrationStatus getStatus() {
+            return status;
+        }
+
+        public void setStatus(RegistrationStatus status) {
+            this.status = status;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
     }
 } 

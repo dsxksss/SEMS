@@ -171,11 +171,51 @@ public class EventController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateEventStatus(@PathVariable Long id, @RequestBody EventStatusRequest request) {
+        return eventRepository.findById(id)
+                .map(event -> {
+                    if (request.getStatus() != null) {
+                        event.setStatus(request.getStatus());
+                        eventRepository.save(event);
+                        return ResponseEntity.ok(new MessageResponse("Event status updated successfully!"));
+                    } else {
+                        return ResponseEntity.badRequest().body(new MessageResponse("Status cannot be null"));
+                    }
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> cancelEvent(@PathVariable Long id) {
+        return eventRepository.findById(id)
+                .map(event -> {
+                    event.setStatus(EventStatus.CANCELLED);
+                    eventRepository.save(event);
+                    return ResponseEntity.ok(new MessageResponse("Event cancelled successfully!"));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/my")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Event>> getMyEvents() {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         List<Event> events = eventRepository.findByCreatedBy_Id(userDetails.getId());
         return ResponseEntity.ok(events);
+    }
+
+    static class EventStatusRequest {
+        private EventStatus status;
+
+        public EventStatus getStatus() {
+            return status;
+        }
+
+        public void setStatus(EventStatus status) {
+            this.status = status;
+        }
     }
 } 
