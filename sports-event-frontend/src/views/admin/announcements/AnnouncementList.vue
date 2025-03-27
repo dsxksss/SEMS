@@ -72,18 +72,20 @@
                 type="success"
                 @click="handleEdit(scope.row)"
               >编辑</el-button>
-              <el-button
-                v-if="scope.row.status !== 'PUBLISHED'"
-                size="small"
-                type="warning"
-                @click="handlePublish(scope.row)"
-              >发布</el-button>
-              <el-button
-                v-else
-                size="small"
-                type="info"
-                @click="handleSetExpired(scope.row)"
-              >撤回</el-button>
+              <template v-if="scope.row.status !== 'PUBLISHED'">
+                <el-button
+                  size="small"
+                  type="warning"
+                  @click="handlePublish(scope.row)"
+                >发布</el-button>
+              </template>
+              <template v-else>
+                <el-button
+                  size="small"
+                  type="warning"
+                  @click="handleSetExpired(scope.row)"
+                >撤回</el-button>
+              </template>
               <el-button
                 size="small"
                 type="danger"
@@ -123,14 +125,6 @@
           </div>
         </div>
         <div class="announcement-content" v-html="currentAnnouncement.content"></div>
-        <div class="announcement-attachments" v-if="currentAnnouncement.attachments && currentAnnouncement.attachments.length > 0">
-          <h4>附件：</h4>
-          <ul class="attachment-list">
-            <li v-for="(attachment, index) in currentAnnouncement.attachments" :key="index">
-              <a :href="attachment.url" target="_blank">{{ attachment.name }}</a>
-            </li>
-          </ul>
-        </div>
       </div>
       <template #footer>
         <span class="dialog-footer">
@@ -171,12 +165,31 @@
         </el-form-item>
         
         <el-form-item label="内容" prop="content">
-          <el-input
-            v-model="announcementForm.content"
-            type="textarea"
-            :rows="10"
-            placeholder="请输入公告内容，支持HTML格式"
-          />
+          <div class="rich-editor-container">
+            <el-input
+              v-model="announcementForm.content"
+              type="textarea"
+              :rows="10"
+              placeholder="请输入公告内容，支持HTML格式"
+            />
+            <div class="editor-tools">
+              <el-upload
+                action="/api/files/upload"
+                :headers="{ Authorization: `Bearer ${authStore.token}` }"
+                :show-file-list="false"
+                :on-success="handleImageSuccess"
+                :before-upload="beforeImageUpload"
+                :accept="'image/jpeg,image/png,image/gif'"
+              >
+                <el-button type="primary" size="small">
+                  <i class="el-icon-picture-outline"></i> 插入图片
+                </el-button>
+              </el-upload>
+              <div class="editor-tip">
+                提示：可以通过插入图片按钮上传图片，或直接粘贴HTML代码，如：&lt;img src="图片地址" alt="图片描述" style="width: 100%;"&gt;
+              </div>
+            </div>
+          </div>
         </el-form-item>
         
         <el-form-item label="发布状态" prop="status">
@@ -184,26 +197,6 @@
             <el-radio label="PUBLISHED">立即发布</el-radio>
             <el-radio label="DRAFT">保存草稿</el-radio>
           </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item label="附件">
-          <el-upload
-            action="/api/files/upload"
-            :headers="{ Authorization: `Bearer ${authStore.token}` }"
-            :auto-upload="true"
-            :file-list="fileList"
-            :on-success="handleUploadSuccess"
-            :on-error="handleUploadError"
-            :on-remove="handleFileRemove"
-            multiple
-          >
-            <el-button type="primary">选择文件</el-button>
-            <template #tip>
-              <div class="el-upload__tip">
-                可上传任意类型文件，单个文件不超过10MB
-              </div>
-            </template>
-          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -283,7 +276,6 @@ const formDialogVisible = ref(false);
 const announcementFormRef = ref<FormInstance>();
 const isEdit = ref(false);
 const submitting = ref(false);
-const fileList = ref<any[]>([]);
 
 // 删除确认对话框
 const deleteDialogVisible = ref(false);
@@ -352,7 +344,7 @@ const fetchAnnouncementList = async () => {
       id: ann.id,
       title: ann.title,
       content: ann.content,
-      type: ann.event ? 'EVENT' : (ann.type || 'SYSTEM'),
+      type: ann.type || (ann.event ? 'EVENT' : 'SYSTEM'),
       status: ann.isPublished ? 'PUBLISHED' : 'DRAFT',
       createTime: ann.createdAt ? dayjs(ann.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
       publishTime: ann.isPublished && ann.updatedAt ? dayjs(ann.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
@@ -452,12 +444,24 @@ const handleView = async (row: Announcement) => {
     // 调用API获取详细信息
     const announcement = await announcementAPI.getAnnouncementById(row.id);
     
+    // 处理内容中的图片URL，移除可能存在的token参数
+    let processedContent = announcement.content;
+    if (processedContent) {
+      // 查找所有图片URL，确保没有token参数
+      const imgRegex = /<img[^>]+src="([^"]+)"/g;
+      processedContent = processedContent.replace(imgRegex, (match, url) => {
+        // 移除URL中可能存在的token参数
+        const cleanUrl = url.split('?')[0];
+        return match.replace(url, cleanUrl);
+      });
+    }
+    
     // 格式化数据
     currentAnnouncement.value = {
       id: announcement.id,
       title: announcement.title, 
-      content: announcement.content,
-      type: announcement.event ? 'EVENT' : (announcement.type || 'SYSTEM'),
+      content: processedContent || announcement.content,
+      type: announcement.type || (announcement.event ? 'EVENT' : 'SYSTEM'),
       status: announcement.isPublished ? 'PUBLISHED' : 'DRAFT',
       createTime: announcement.createdAt ? dayjs(announcement.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
       publishTime: announcement.isPublished && announcement.updatedAt ? dayjs(announcement.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
@@ -477,7 +481,6 @@ const handleView = async (row: Announcement) => {
 const handleCreate = () => {
   isEdit.value = false;
   resetAnnouncementForm();
-  fileList.value = [];
   formDialogVisible.value = true;
 };
 
@@ -494,15 +497,11 @@ const handleEdit = async (row: Announcement) => {
     announcementForm.id = announcement.id;
     announcementForm.title = announcement.title;
     announcementForm.content = announcement.content;
-    announcementForm.type = announcement.event ? 'EVENT' : (announcement.type || 'SYSTEM');
+    announcementForm.type = announcement.type || (announcement.event ? 'EVENT' : 'SYSTEM');
     announcementForm.status = announcement.isPublished ? 'PUBLISHED' : 'DRAFT';
     
     // 处理附件
     announcementForm.attachments = announcement.attachments || [];
-    fileList.value = announcementForm.attachments.map(a => ({
-      name: a.name,
-      url: a.url
-    }));
     
     formDialogVisible.value = true;
   } catch (error) {
@@ -612,37 +611,6 @@ const resetAnnouncementForm = () => {
   }
 };
 
-// 处理文件变更
-const handleFileChange = (file: any, fileList: any[]) => {
-  console.log('File changed:', file);
-  fileList.value = fileList;
-};
-
-// 处理文件上传成功
-const handleUploadSuccess = (response: any, file: any) => {
-  console.log('Upload success:', response);
-  announcementForm.attachments.push({
-    name: file.name,
-    url: response.url || `/api/files/download/${response.id || response.fileId || response.filename}`,
-    size: file.size
-  });
-  ElMessage.success(`文件 ${file.name} 上传成功`);
-};
-
-// 处理文件上传失败
-const handleUploadError = (error: any, file: any) => {
-  console.error('Upload error:', error);
-  ElMessage.error(`文件 ${file.name} 上传失败`);
-};
-
-// 处理文件移除
-const handleFileRemove = (file: any) => {
-  const index = announcementForm.attachments.findIndex(item => item.name === file.name);
-  if (index !== -1) {
-    announcementForm.attachments.splice(index, 1);
-  }
-};
-
 // 提交公告表单
 const submitAnnouncementForm = async () => {
   if (!announcementFormRef.value) return;
@@ -655,10 +623,12 @@ const submitAnnouncementForm = async () => {
         const announcementData = {
           title: announcementForm.title,
           content: announcementForm.content,
-          type: announcementForm.type,
+          type: announcementForm.type || 'SYSTEM',
           isPublished: announcementForm.status === 'PUBLISHED',
-          attachments: announcementForm.attachments
+          attachments: [] // 不使用附件功能
         };
+        
+        console.log('提交的公告数据:', announcementData);
         
         if (isEdit.value) {
           // 更新公告
@@ -694,6 +664,52 @@ const handleSizeChange = (size: number) => {
 const handleCurrentChange = (page: number) => {
   currentPage.value = page;
   fetchAnnouncementList();
+};
+
+// 处理图片上传前的验证
+const beforeImageUpload = (file: File) => {
+  const isImage = file.type.startsWith('image/');
+  const isLt5M = file.size / 1024 / 1024 < 5;
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!');
+    return false;
+  }
+  
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB!');
+    return false;
+  }
+  
+  return true;
+};
+
+// 处理图片上传成功
+const handleImageSuccess = (response: any, file: any) => {
+  // 获取图片URL
+  let imageUrl = '';
+  if (response && response.data) {
+    imageUrl = response.data;
+  } else if (response && response.filename) {
+    imageUrl = `/api/files/download/${response.filename}`;
+  } else if (response && response.id) {
+    imageUrl = `/api/files/download/${response.id}`;
+  } else if (response && response.fileId) {
+    imageUrl = `/api/files/download/${response.fileId}`;
+  } else if (typeof response === 'string') {
+    imageUrl = response;
+  }
+  
+  if (imageUrl) {
+    // 在当前光标位置插入图片HTML
+    const imgHtml = `<img src="${imageUrl}" alt="${file.name}" style="max-width: 100%; margin: 10px 0;" />`;
+    // 将图片HTML插入到内容中
+    announcementForm.content += imgHtml;
+    ElMessage.success('图片插入成功');
+  } else {
+    ElMessage.error('图片上传失败，请重试');
+    console.error('无效的响应格式:', response);
+  }
 };
 
 // 初始化加载
@@ -825,5 +841,34 @@ onMounted(() => {
 /* 确保最后一个按钮没有右边距 */
 .action-buttons .el-button:last-child {
   margin-right: 0;
+}
+
+/* 富文本编辑器相关样式 */
+.rich-editor-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.editor-tools {
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-top: 1px solid #dcdfe6;
+}
+
+.editor-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+/* 确保图片在查看时正常显示 */
+.announcement-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style> 

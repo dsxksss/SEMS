@@ -1,7 +1,10 @@
 package com.sems.sportseventmanagementsystem.controller;
 
+import com.sems.sportseventmanagementsystem.entity.ERole;
+import com.sems.sportseventmanagementsystem.entity.Role;
 import com.sems.sportseventmanagementsystem.entity.User;
 import com.sems.sportseventmanagementsystem.payload.response.MessageResponse;
+import com.sems.sportseventmanagementsystem.repository.RoleRepository;
 import com.sems.sportseventmanagementsystem.repository.UserRepository;
 import com.sems.sportseventmanagementsystem.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +14,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -19,6 +25,9 @@ import java.util.List;
 public class UserController {
     @Autowired
     UserRepository userRepository;
+    
+    @Autowired
+    RoleRepository roleRepository;
     
     @Autowired
     PasswordEncoder encoder;
@@ -58,6 +67,52 @@ public class UserController {
                     if (userDetails.getEnabled() != null) {
                         user.setEnabled(userDetails.getEnabled());
                     }
+                    
+                    // 处理角色更新
+                    if (userDetails.getRoles() != null && !userDetails.getRoles().isEmpty()) {
+                        Set<Role> roles = new HashSet<>();
+                        
+                        System.out.println("收到的角色数据: " + userDetails.getRoles());
+                        
+                        // 遍历前端传来的角色列表
+                        for (Role role : userDetails.getRoles()) {
+                            System.out.println("处理角色: " + role);
+                            
+                            // 如果角色对象有name属性，通过name查找对应的角色
+                            if (role.getName() != null) {
+                                System.out.println("通过角色名查找: " + role.getName());
+                                // 查找数据库中对应的角色
+                                Optional<Role> dbRole = roleRepository.findByName(role.getName());
+                                if (dbRole.isPresent()) {
+                                    System.out.println("找到角色: " + dbRole.get().getName());
+                                    roles.add(dbRole.get());
+                                } else {
+                                    System.out.println("未找到角色: " + role.getName());
+                                }
+                            } else if (role.getId() != null) {
+                                System.out.println("通过角色ID查找: " + role.getId());
+                                // 如果角色对象有ID，通过ID查找
+                                Optional<Role> dbRole = roleRepository.findById(role.getId());
+                                if (dbRole.isPresent()) {
+                                    System.out.println("找到角色: " + dbRole.get().getName());
+                                    roles.add(dbRole.get());
+                                } else {
+                                    System.out.println("未找到角色ID: " + role.getId());
+                                }
+                            }
+                        }
+                        
+                        // 只有找到有效角色时才更新
+                        if (!roles.isEmpty()) {
+                            System.out.println("更新角色列表: " + roles);
+                            // 先清空现有角色，然后添加新角色
+                            user.getRoles().clear();
+                            user.getRoles().addAll(roles);
+                        } else {
+                            System.out.println("没有找到有效角色，不更新角色信息");
+                        }
+                    }
+                    
                     return ResponseEntity.ok(userRepository.save(user));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());

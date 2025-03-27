@@ -63,6 +63,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/events/public/**").permitAll()
                 .requestMatchers("/api/categories/public/**").permitAll()
                 .requestMatchers("/api/announcements/public/**").permitAll()
+                .requestMatchers("/api/files/download/**").permitAll()
                 .requestMatchers("/api-docs/**").permitAll()
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()

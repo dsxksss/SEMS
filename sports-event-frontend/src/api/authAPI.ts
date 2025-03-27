@@ -12,11 +12,17 @@ export interface SignupRequest {
   roles?: string[];
 }
 
+// 定义Role接口
+export interface Role {
+  id?: number;
+  name: string;
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
-  roles: string[];
+  roles: (string | Role)[];
   enabled?: boolean;
   phone?: string;
   realName?: string;

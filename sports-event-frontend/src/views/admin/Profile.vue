@@ -10,7 +10,7 @@
                 {{ userInfo.username?.substring(0, 1).toUpperCase() }}
               </el-avatar>
               <el-button class="change-avatar-btn" size="small" @click="handleChangeAvatar">
-                <el-icon><el-icon-camera /></el-icon>
+                <el-icon><Camera /></el-icon>
               </el-button>
             </div>
             <h3 class="username">{{ userInfo.username }}</h3>
@@ -183,7 +183,7 @@
           name="file"
         >
           <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
-          <el-icon v-else class="avatar-uploader-icon"><el-icon-plus /></el-icon>
+          <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
         </el-upload>
         <div class="upload-tip">
           请选择一张图片作为您的头像
@@ -204,6 +204,7 @@ import { ElMessage } from 'element-plus';
 import { useAuthStore } from '../../stores/auth';
 import { userAPI, type ExtendedUser } from '../../api/userAPI';
 import dayjs from 'dayjs';
+import { Camera, Plus } from '@element-plus/icons-vue';
 
 const authStore = useAuthStore();
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
@@ -382,31 +383,44 @@ const beforeAvatarUpload = (file: File) => {
 };
 
 // 上传成功回调
-const handleAvatarSuccess = (response: any) => {
+const handleAvatarSuccess = async (response: any) => {
   uploadingAvatar.value = false;
   console.log('上传响应:', response);
   
   // 处理不同的响应格式
   let avatarPath = '';
-  if (response && response.data) {
-    avatarPath = response.data;
-  } else if (response && response.filename) {
+  if (response && response.filename) {
     avatarPath = `/api/files/download/${response.filename}`;
   } else if (response && response.id) {
     avatarPath = `/api/files/download/${response.id}`;
   } else if (response && response.fileId) {
     avatarPath = `/api/files/download/${response.fileId}`;
+  } else if (response && response.data) {
+    avatarPath = response.data;
   } else if (typeof response === 'string') {
     avatarPath = response;
   }
   
+  // 确保URL不包含token参数
   if (avatarPath) {
-    // 更新本地头像
-    userInfo.avatar = avatarPath;
-    authStore.updateUserAvatar(avatarPath);
-    avatarUrl.value = avatarPath;
-    ElMessage.success('头像更新成功');
-    avatarDialogVisible.value = false;
+    try {
+      // 移除URL中的token参数
+      const urlWithoutToken = avatarPath.split('?')[0];
+      
+      // 更新本地头像
+      userInfo.avatar = urlWithoutToken;
+      authStore.updateUserAvatar(urlWithoutToken);
+      avatarUrl.value = urlWithoutToken;
+      
+      // 关键修复：调用API更新用户头像到后端数据库
+      await userAPI.updateCurrentUser({ avatar: urlWithoutToken });
+      
+      ElMessage.success('头像更新成功');
+      avatarDialogVisible.value = false;
+    } catch (error) {
+      console.error('保存头像到后端失败:', error);
+      ElMessage.error('头像更新失败，请重试');
+    }
   } else {
     ElMessage.error('头像上传失败，请重试');
     console.error('无效的响应格式:', response);
@@ -416,7 +430,7 @@ const handleAvatarSuccess = (response: any) => {
 // 获取角色对应的标签类型
 const getRoleTagType = (role: any) => {
   // 如果role是对象，则获取name属性
-  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
   
   switch (roleName) {
     case 'ROLE_ADMIN':
@@ -435,7 +449,7 @@ const getRoleTagType = (role: any) => {
 // 格式化角色名称
 const formatRoleName = (role: any) => {
   // 如果role是对象，则获取name属性
-  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
   
   switch (roleName) {
     case 'ROLE_ADMIN':
@@ -456,13 +470,20 @@ onMounted(async () => {
   try {
     // 获取当前用户详细信息
     const userData = await userAPI.getCurrentUser();
+    console.log('获取到的用户信息:', userData);
     
     // 更新用户信息，处理 createdAt 和 lastLogin（在 ExtendedUser 中可能存在）
     Object.assign(userInfo, {
       ...userData,
       createdAt: (userData as ExtendedUser).createdAt ? dayjs((userData as ExtendedUser).createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知',
-      lastLogin: '未知' // 后端API暂不提供 lastLogin
+      lastLogin: '未知', // 后端API暂不提供 lastLogin
+      avatar: userData.avatar || '' // 确保头像URL被正确赋值
     });
+    
+    // 如果头像存在，同时更新到authStore
+    if (userData.avatar) {
+      authStore.updateUserAvatar(userData.avatar);
+    }
     
     // 更新表单数据
     Object.assign(basicForm, {

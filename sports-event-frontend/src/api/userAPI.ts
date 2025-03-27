@@ -2,12 +2,19 @@ import apiClient from './axios';
 import type { User } from './authAPI';
 import { authAPI } from './authAPI';
 
+// 定义Role接口
+export interface Role {
+  id?: number;
+  name: string;
+}
+
 // 扩展User类型，添加status字段
-export interface ExtendedUser extends User {
+export interface ExtendedUser extends Omit<User, 'roles'> {
   status?: string; // 前端展示用
   enabled?: boolean; // 与后端对应
   createdAt?: string;
   avatar?: string; // 用户头像URL
+  roles: (string | Role)[];
 }
 
 export const userAPI = {
@@ -122,14 +129,19 @@ export const userAPI = {
     let updateData = {...userData};
     
     if (userData.roles) {
-      // 确保将roles字段正确传递给后端
-      // 某些后端API可能需要转换角色格式
-      const roleNames = userData.roles.map(role => {
-        // 如果需要转换角色格式，取消下面的注释
-        // return role.replace('ROLE_', '').toLowerCase();
-        return role;
+      // 将字符串角色名称转换为Role对象格式
+      updateData.roles = userData.roles.map(role => {
+        // 如果已经是对象格式就保留
+        if (typeof role === 'object' && role !== null && 'name' in role) {
+          return role;
+        }
+        // 否则转换为对象格式，确保使用ERole枚举格式
+        return {
+          name: role as string
+        };
       });
-      updateData.roles = roleNames;
+      
+      console.log('转换后的角色数据:', updateData.roles);
     }
     
     // 将前端的status转换为后端的enabled
@@ -137,6 +149,8 @@ export const userAPI = {
       updateData.enabled = userData.status === 'active';
       delete updateData.status;
     }
+    
+    console.log('发送给后端的用户数据:', updateData);
     
     const response = await apiClient.put<ExtendedUser>(`/users/${id}`, updateData);
     return response.data;
@@ -159,4 +173,4 @@ export const userAPI = {
   }
 };
 
-export default userAPI; 
+export default userAPI;

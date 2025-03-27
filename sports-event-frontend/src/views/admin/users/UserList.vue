@@ -227,10 +227,20 @@ const fetchUserList = async () => {
       if (filterForm.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
         matches = false;
       }
+      
       // 角色筛选
-      if (filterForm.role && !user.roles.includes(filterForm.role)) {
-        matches = false;
+      if (filterForm.role) {
+        const hasRole = user.roles.some(role => {
+          // 处理角色对象
+          const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
+          return roleName === filterForm.role;
+        });
+        
+        if (!hasRole) {
+          matches = false;
+        }
       }
+      
       // 状态筛选
       if (filterForm.status && user.status !== filterForm.status) {
         matches = false;
@@ -359,6 +369,8 @@ const saveUser = async () => {
       try {
         if (dialogType.value === 'add') {
           // 添加用户 - 创建新用户
+          console.log('创建用户，角色信息:', userForm.roles);
+          
           const result = await userAPI.createUser({
             username: userForm.username,
             email: userForm.email,
@@ -384,6 +396,9 @@ const saveUser = async () => {
           }
         } else {
           // 编辑用户 - 使用映射后的数据结构
+          console.log('更新用户信息:', userForm.id);
+          console.log('更新的角色信息:', userForm.roles);
+          
           await userAPI.updateUser(userForm.id, {
             username: userForm.username,
             email: userForm.email,
@@ -411,7 +426,7 @@ const saveUser = async () => {
 // 获取角色对应的标签类型
 const getRoleTagType = (role: any) => {
   // 如果role是对象，则获取name属性
-  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
   
   switch (roleName) {
     case 'ROLE_ADMIN':
@@ -430,7 +445,7 @@ const getRoleTagType = (role: any) => {
 // 格式化角色名称
 const formatRoleName = (role: any) => {
   // 如果role是对象，则获取name属性
-  const roleName = typeof role === 'object' && role !== null ? role.name : role;
+  const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
   
   switch (roleName) {
     case 'ROLE_ADMIN':
