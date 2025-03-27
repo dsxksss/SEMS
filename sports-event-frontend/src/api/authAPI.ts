@@ -17,6 +17,10 @@ export interface User {
   username: string;
   email: string;
   roles: string[];
+  enabled?: boolean;
+  phone?: string;
+  realName?: string;
+  avatar?: string;
 }
 
 export interface AuthResponse {

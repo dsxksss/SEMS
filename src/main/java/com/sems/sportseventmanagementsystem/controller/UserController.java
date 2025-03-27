@@ -55,6 +55,9 @@ public class UserController {
                     if (userDetails.getAvatar() != null) {
                         user.setAvatar(userDetails.getAvatar());
                     }
+                    if (userDetails.getEnabled() != null) {
+                        user.setEnabled(userDetails.getEnabled());
+                    }
                     return ResponseEntity.ok(userRepository.save(user));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -93,6 +96,18 @@ public class UserController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> toggleUserStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    user.setEnabled(request.isEnabled());
+                    userRepository.save(user);
+                    return ResponseEntity.ok(new MessageResponse("User status updated successfully!"));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // Inner class for password change request
     static class PasswordChangeRequest {
         private String newPassword;
@@ -103,6 +118,19 @@ public class UserController {
 
         public void setNewPassword(String newPassword) {
             this.newPassword = newPassword;
+        }
+    }
+
+    // 状态请求内部类
+    static class StatusRequest {
+        private boolean enabled;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 } 

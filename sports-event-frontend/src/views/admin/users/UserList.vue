@@ -214,8 +214,14 @@ const fetchUserList = async () => {
     // 调用API获取用户列表
     const response = await userAPI.getAllUsers();
     
+    // 处理数据，将后端的enabled映射为前端的status
+    const processedUsers = response.map(user => ({
+      ...user,
+      status: user.enabled ? 'active' : 'disabled'
+    }));
+    
     // 处理筛选
-    let filteredUsers = response.filter(user => {
+    let filteredUsers = processedUsers.filter(user => {
       let matches = true;
       // 用户名筛选，不区分大小写
       if (filterForm.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
@@ -286,6 +292,7 @@ const handleEdit = (row: ExtendedUser) => {
 // 启用/禁用用户
 const handleToggleStatus = (row: ExtendedUser) => {
   const newStatus = row.status === 'active' ? 'disabled' : 'active';
+  const newEnabled = newStatus === 'active';
   const actionText = newStatus === 'active' ? '启用' : '禁用';
   
   ElMessageBox.confirm(
@@ -299,14 +306,8 @@ const handleToggleStatus = (row: ExtendedUser) => {
   )
     .then(async () => {
       try {
-        // 调用API更新用户状态
-        await userAPI.updateUser(row.id, { 
-          status: newStatus,
-          username: row.username,
-          email: row.email,
-          roles: row.roles
-        });
-        
+        // 调用专门的状态切换API
+        await userAPI.toggleUserStatus(row.id, newEnabled);
         ElMessage.success(`${actionText}用户成功`);
         fetchUserList(); // 重新获取列表
       } catch (error) {
@@ -382,7 +383,7 @@ const saveUser = async () => {
             fetchUserList(); // 刷新用户列表
           }
         } else {
-          // 编辑用户 - 确保传递所有必要字段
+          // 编辑用户 - 使用映射后的数据结构
           await userAPI.updateUser(userForm.id, {
             username: userForm.username,
             email: userForm.email,

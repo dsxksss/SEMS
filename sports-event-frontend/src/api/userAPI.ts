@@ -4,7 +4,8 @@ import { authAPI } from './authAPI';
 
 // 扩展User类型，添加status字段
 export interface ExtendedUser extends User {
-  status?: string;
+  status?: string; // 前端展示用
+  enabled?: boolean; // 与后端对应
   createdAt?: string;
 }
 
@@ -79,8 +80,8 @@ export const userAPI = {
     // 如果成功创建用户并需要设置状态，进行额外的API调用
     if (response && response.id && userData.status) {
       try {
-        await apiClient.put(`/users/${response.id}`, {
-          status: userData.status
+        await apiClient.put(`/users/${response.id}/status`, {
+          enabled: userData.status === 'active'
         });
       } catch (error) {
         console.error('设置用户状态失败', error);
@@ -108,7 +109,21 @@ export const userAPI = {
       updateData.roles = roleNames;
     }
     
+    // 将前端的status转换为后端的enabled
+    if (userData.status !== undefined) {
+      updateData.enabled = userData.status === 'active';
+      delete updateData.status;
+    }
+    
     const response = await apiClient.put<ExtendedUser>(`/users/${id}`, updateData);
+    return response.data;
+  },
+
+  /**
+   * 管理员: 切换用户状态（启用/禁用）
+   */
+  toggleUserStatus: async (id: number, enabled: boolean) => {
+    const response = await apiClient.put(`/users/${id}/status`, { enabled });
     return response.data;
   },
 
