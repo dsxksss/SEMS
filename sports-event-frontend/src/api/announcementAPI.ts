@@ -1,44 +1,46 @@
 import apiClient from './axios';
 import type { PaginatedResponse } from './eventsAPI';
 
-export interface Attachment {
-  name: string;
-  url: string;
-  size?: number;
-}
-
 export interface Announcement {
   id: number;
   title: string;
   content: string;
-  type?: string;
-  event?: {
-    id: number;
-    name: string;
-  };
-  author?: {
-    id: number;
-    username: string;
-  };
-  createdBy?: {
-    id: number;
-    username: string;
-  };
-  isPublished: boolean;
   createdAt: string;
   updatedAt: string;
-  viewCount?: number;
-  attachments?: Attachment[];
+  createdBy: string;
+  published: boolean;
+  eventId?: number;
+  type?: string;
+  attachments?: string[];
 }
 
 export const announcementAPI = {
   /**
-   * 获取公开公告列表（分页）
+   * 获取公告列表 (带分页)
    */
-  getPublicAnnouncements: async (page = 0, size = 10) => {
-    const response = await apiClient.get<PaginatedResponse<Announcement>>('/announcements/public', {
-      params: { page, size }
-    });
+  getAnnouncements: async (params: {
+    page?: number;
+    size?: number;
+    keyword?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<PaginatedResponse<Announcement>> => {
+    const { page = 0, size = 10, keyword, startDate, endDate } = params;
+    let url = `/announcements/public?page=${page}&size=${size}`;
+    
+    if (keyword) {
+      url += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    
+    if (startDate) {
+      url += `&startDate=${startDate}`;
+    }
+    
+    if (endDate) {
+      url += `&endDate=${endDate}`;
+    }
+    
+    const response = await apiClient.get(url);
     return response.data;
   },
 
@@ -51,23 +53,23 @@ export const announcementAPI = {
   },
 
   /**
-   * 获取赛事相关公告
-   */
-  getAnnouncementsByEvent: async (eventId: number) => {
-    const response = await apiClient.get<Announcement[]>(`/announcements/public/event/${eventId}`);
-    return response.data;
-  },
-
-  /**
    * 获取公告详情
    */
-  getAnnouncementById: async (id: number) => {
-    const response = await apiClient.get<Announcement>(`/announcements/${id}`);
+  getAnnouncementById: async (id: number): Promise<Announcement> => {
+    const response = await apiClient.get(`/announcements/${id}`);
     return response.data;
   },
 
   /**
-   * 管理员: 获取所有公告
+   * 获取与特定赛事相关的公告
+   */
+  getAnnouncementsByEvent: async (eventId: number): Promise<Announcement[]> => {
+    const response = await apiClient.get(`/announcements/public/event/${eventId}`);
+    return response.data;
+  },
+
+  /**
+   * 获取所有公告 (管理员)
    */
   getAllAnnouncements: async () => {
     const response = await apiClient.get<Announcement[]>('/announcements');
@@ -75,7 +77,7 @@ export const announcementAPI = {
   },
 
   /**
-   * 管理员: 创建公告
+   * 创建公告
    */
   createAnnouncement: async (announcement: Partial<Announcement>) => {
     const response = await apiClient.post<Announcement>('/announcements', announcement);
@@ -83,7 +85,7 @@ export const announcementAPI = {
   },
 
   /**
-   * 管理员: 更新公告
+   * 更新公告
    */
   updateAnnouncement: async (id: number, announcement: Partial<Announcement>) => {
     const response = await apiClient.put<Announcement>(`/announcements/${id}`, announcement);
@@ -91,7 +93,7 @@ export const announcementAPI = {
   },
 
   /**
-   * 管理员: 发布/撤回公告
+   * 切换公告发布状态
    */
   toggleAnnouncementPublished: async (id: number, isPublished: boolean) => {
     const response = await apiClient.put<Announcement>(`/announcements/${id}/publish`, { published: isPublished });
@@ -99,7 +101,7 @@ export const announcementAPI = {
   },
 
   /**
-   * 管理员: 删除公告
+   * 删除公告
    */
   deleteAnnouncement: async (id: number) => {
     const response = await apiClient.delete(`/announcements/${id}`);

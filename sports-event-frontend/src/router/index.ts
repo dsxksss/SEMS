@@ -77,6 +77,15 @@ const routes = [
           title: '公告列表',
           requiresAuth: true
         }
+      },
+      {
+        path: 'profile',
+        name: 'UserProfile',
+        component: () => import('../views/user/Profile.vue'),
+        meta: { 
+          title: '个人中心',
+          requiresAuth: true
+        }
       }
     ]
   },

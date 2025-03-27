@@ -62,6 +62,11 @@
               <el-icon><Bell /></el-icon>
               <span>公告列表</span>
             </el-menu-item>
+            
+            <el-menu-item index="/user/profile">
+              <el-icon><User /></el-icon>
+              <span>个人中心</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
         
@@ -89,7 +94,8 @@ import {
   Bell, 
   CaretBottom, 
   SwitchButton,
-  DocumentChecked
+  DocumentChecked,
+  User
 } from '@element-plus/icons-vue';
 
 const router = useRouter();
