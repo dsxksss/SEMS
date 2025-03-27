@@ -181,7 +181,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import dayjs from 'dayjs';
+import { registrationAPI } from '../../../api/registrationAPI';
+import { eventsAPI } from '../../../api/eventsAPI';
 
 interface Event {
   id: number;
@@ -250,18 +253,14 @@ const statusChangeMessage = computed(() => {
 // 加载赛事列表
 const loadEvents = async () => {
   try {
-    // 实际应用中调用API获取赛事列表
-    // const response = await eventsAPI.getAllEvents();
-    // events.value = response.data;
+    // 获取所有赛事
+    const allEvents = await eventsAPI.getAllEvents();
     
-    // 使用模拟数据
-    events.value = [
-      { id: 1, name: '2023年校园马拉松' },
-      { id: 2, name: '大学生篮球联赛' },
-      { id: 3, name: '游泳比赛' },
-      { id: 4, name: '校园足球杯' },
-      { id: 5, name: '冬季滑冰比赛' }
-    ];
+    // 格式化赛事数据
+    events.value = allEvents.map(event => ({
+      id: event.id,
+      name: event.name
+    }));
   } catch (error) {
     console.error('获取赛事列表失败', error);
     ElMessage.error('获取赛事列表失败');
@@ -272,132 +271,80 @@ const loadEvents = async () => {
 const fetchRegistrationList = async () => {
   loading.value = true;
   try {
-    // 实际应用中调用API获取报名列表
-    // const response = await registrationAPI.getRegistrationList({
-    //   page: currentPage.value - 1,
-    //   size: pageSize.value,
-    //   athleteName: filterForm.athleteName,
-    //   eventId: filterForm.eventId,
-    //   status: filterForm.status
-    // });
-    // registrationList.value = response.content;
-    // total.value = response.totalElements;
+    let registrations = [];
     
-    // 使用模拟数据
-    setTimeout(() => {
-      registrationList.value = [
-        {
-          id: 1,
-          athleteName: '张三',
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          gender: 'MALE',
-          phoneNumber: '13800138001',
-          email: 'zhangsan@example.com',
-          idCard: '110101199001011234',
-          age: 33,
-          registrationTime: '2023-04-20 10:30:00',
-          status: 'APPROVED'
-        },
-        {
-          id: 2,
-          athleteName: '李四',
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          gender: 'MALE',
-          phoneNumber: '13800138002',
-          email: 'lisi@example.com',
-          idCard: '110101199203034321',
-          age: 31,
-          registrationTime: '2023-04-21 14:20:00',
-          status: 'PENDING'
-        },
-        {
-          id: 3,
-          athleteName: '王五',
-          eventId: 2,
-          eventName: '大学生篮球联赛',
-          gender: 'MALE',
-          phoneNumber: '13800138003',
-          email: 'wangwu@example.com',
-          idCard: '110101199506067890',
-          age: 28,
-          registrationTime: '2023-05-05 09:15:00',
-          status: 'PENDING'
-        },
-        {
-          id: 4,
-          athleteName: '赵六',
-          eventId: 3,
-          eventName: '游泳比赛',
-          gender: 'MALE',
-          phoneNumber: '13800138004',
-          email: 'zhaoliu@example.com',
-          idCard: '110101199607082345',
-          age: 27,
-          registrationTime: '2023-03-25 16:45:00',
-          status: 'APPROVED'
-        },
-        {
-          id: 5,
-          athleteName: '钱七',
-          eventId: 4,
-          eventName: '校园足球杯',
-          gender: 'MALE',
-          phoneNumber: '13800138005',
-          email: 'qianqi@example.com',
-          idCard: '110101199708097890',
-          age: 26,
-          registrationTime: '2023-04-15 11:20:00',
-          status: 'REJECTED',
-          remark: '提交的身份证信息不匹配，请重新提交正确的身份证信息。'
-        },
-        {
-          id: 6,
-          athleteName: '孙八',
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          gender: 'MALE',
-          phoneNumber: '13800138006',
-          email: 'sunba@example.com',
-          idCard: '110101199809108765',
-          age: 25,
-          registrationTime: '2023-04-22 08:30:00',
-          status: 'CANCELED'
-        },
-        {
-          id: 7,
-          athleteName: '周九',
-          eventId: 3,
-          eventName: '游泳比赛',
-          gender: 'FEMALE',
-          phoneNumber: '13800138007',
-          email: 'zhoujiu@example.com',
-          idCard: '110101199910119876',
-          age: 24,
-          registrationTime: '2023-03-26 13:10:00',
-          status: 'APPROVED'
-        },
-        {
-          id: 8,
-          athleteName: '吴十',
-          eventId: 5,
-          eventName: '冬季滑冰比赛',
-          gender: 'FEMALE',
-          phoneNumber: '13800138008',
-          email: 'wushi@example.com',
-          idCard: '110101200011126543',
-          age: 23,
-          registrationTime: '2023-01-05 09:40:00',
-          status: 'APPROVED'
-        }
-      ];
-      total.value = 8;
-      loading.value = false;
-    }, 500);
+    if (filterForm.eventId) {
+      // 按赛事ID获取报名
+      const eventId = filterForm.eventId;
+      let status = filterForm.status || undefined;
+      
+      // 如果有状态筛选
+      if (status) {
+        const response = await registrationAPI.getRegistrationsByEventAndStatus(
+          eventId, 
+          status,
+          currentPage.value - 1, 
+          pageSize.value
+        );
+        registrations = response.content;
+        total.value = response.totalElements;
+      } else {
+        // 没有状态筛选
+        const response = await registrationAPI.getRegistrationsByEvent(
+          eventId,
+          currentPage.value - 1,
+          pageSize.value
+        );
+        registrations = response.content;
+        total.value = response.totalElements;
+      }
+    } else {
+      // 获取所有报名
+      const allRegistrations = await registrationAPI.getAllRegistrations();
+      
+      // 手动筛选
+      let filteredRegistrations = allRegistrations;
+      
+      // 按状态筛选
+      if (filterForm.status) {
+        filteredRegistrations = filteredRegistrations.filter(reg => reg.status === filterForm.status);
+      }
+      
+      // 按运动员姓名筛选
+      if (filterForm.athleteName) {
+        filteredRegistrations = filteredRegistrations.filter(reg => 
+          reg.user.username.toLowerCase().includes(filterForm.athleteName.toLowerCase())
+        );
+      }
+      
+      // 计算总数
+      total.value = filteredRegistrations.length;
+      
+      // 手动分页
+      const startIndex = (currentPage.value - 1) * pageSize.value;
+      const endIndex = startIndex + pageSize.value;
+      registrations = filteredRegistrations.slice(startIndex, endIndex);
+    }
+    
+    // 格式化报名数据
+    registrationList.value = registrations.map(reg => ({
+      id: reg.id,
+      athleteName: reg.user.username,
+      eventId: reg.event.id,
+      eventName: reg.event.name,
+      gender: 'MALE', // 默认值，实际应从用户信息中获取
+      phoneNumber: '',  // 默认值，实际应从用户信息中获取
+      email: '', // 默认值，实际应从用户信息中获取
+      idCard: '', // 默认值，实际应从用户信息中获取
+      age: 0, // 默认值，实际应从用户信息中获取
+      registrationTime: dayjs(reg.registrationTime || reg.createdAt).format('YYYY-MM-DD HH:mm:ss'),
+      status: reg.status,
+      remark: reg.notes // 使用notes作为备注字段
+    }));
   } catch (error) {
     console.error('获取报名列表失败', error);
     ElMessage.error('获取报名列表失败，请刷新重试');
+  } finally {
     loading.value = false;
   }
 };
@@ -468,38 +415,25 @@ const confirmStatusChange = async () => {
   
   try {
     // 获取拒绝原因
-    const remark = targetStatus.value === 'REJECTED' ? rejectReason.value : '';
+    const notes = targetStatus.value === 'REJECTED' ? rejectReason.value : undefined;
     
-    // 实际应用中调用API更新报名状态
-    // await registrationAPI.updateRegistrationStatus(
-    //   statusChangeRegistration.value.id, 
-    //   targetStatus.value,
-    //   remark
-    // );
-    
-    // 模拟成功
-    // 更新状态
-    if (currentRegistration.value && currentRegistration.value.id === statusChangeRegistration.value.id) {
-      currentRegistration.value.status = targetStatus.value;
-      if (targetStatus.value === 'REJECTED') {
-        currentRegistration.value.remark = rejectReason.value;
-      }
-    }
-    
-    // 更新列表数据
-    const index = registrationList.value.findIndex(item => item.id === statusChangeRegistration.value?.id);
-    if (index > -1) {
-      registrationList.value[index].status = targetStatus.value;
-      if (targetStatus.value === 'REJECTED') {
-        registrationList.value[index].remark = rejectReason.value;
-      }
-    }
+    // 调用API更新报名状态
+    await registrationAPI.updateRegistrationStatus(
+      statusChangeRegistration.value.id, 
+      targetStatus.value as 'APPROVED' | 'REJECTED',
+      notes
+    );
     
     ElMessage.success('报名状态更新成功');
     statusDialogVisible.value = false;
     
+    // 关闭详情弹窗（如果打开的话）
+    if (detailDialogVisible.value) {
+      detailDialogVisible.value = false;
+    }
+    
     // 刷新列表
-    // fetchRegistrationList();
+    fetchRegistrationList();
   } catch (error) {
     console.error('更新报名状态失败', error);
     ElMessage.error('更新报名状态失败，请重试');

@@ -201,6 +201,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useAuthStore } from '../../stores/auth';
+import { userAPI } from '../../api/userAPI';
+import dayjs from 'dayjs';
 
 const authStore = useAuthStore();
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
@@ -211,11 +213,11 @@ const userInfo = reactive({
   email: authStore.user?.email || '',
   roles: authStore.user?.roles || [],
   avatar: '',
-  createdAt: '2023-01-01 08:00:00',
-  lastLogin: '2023-04-25 10:30:15',
-  realName: '张三',
-  phone: '13800138000',
-  bio: '体育赛事管理系统管理员'
+  createdAt: '',
+  lastLogin: '',
+  realName: '',
+  phone: '',
+  bio: ''
 });
 
 // 标签页
@@ -248,14 +250,20 @@ const updateBasicInfo = async () => {
   
   try {
     await basicFormRef.value.validate();
-    // 这里应该调用API更新用户信息
-    // await userAPI.updateUserInfo(basicForm);
+    // 调用API更新用户信息
+    await userAPI.updateCurrentUser({
+      email: basicForm.email,
+      realName: basicForm.realName,
+      phone: basicForm.phone,
+      bio: basicForm.bio
+    });
     
     // 更新本地用户信息
     Object.assign(userInfo, basicForm);
     ElMessage.success('个人信息更新成功');
   } catch (error) {
-    console.error('表单验证失败', error);
+    console.error('更新个人信息失败', error);
+    ElMessage.error('更新个人信息失败，请重试');
   }
 };
 
@@ -304,13 +312,17 @@ const updatePassword = async () => {
   
   try {
     await passwordFormRef.value.validate();
-    // 这里应该调用API更新密码
-    // await userAPI.updatePassword(passwordForm);
+    // 调用API更新密码
+    await userAPI.changePassword(
+      passwordForm.currentPassword,
+      passwordForm.newPassword
+    );
     
     ElMessage.success('密码更新成功');
     resetPasswordForm();
   } catch (error) {
-    console.error('表单验证失败', error);
+    console.error('更新密码失败', error);
+    ElMessage.error('密码更新失败，请检查当前密码是否正确');
   }
 };
 
@@ -321,33 +333,15 @@ const resetPasswordForm = () => {
   }
 };
 
-// 安全记录
-const securityActivities = [
+// 安全记录 - 从API获取或设置为空
+const securityActivities = ref([
   {
     content: '成功登录系统',
-    timestamp: '2023-04-25 10:30:15',
+    timestamp: dayjs().format('YYYY-MM-DD HH:mm:ss'),
     type: 'success',
     color: '#67C23A'
-  },
-  {
-    content: '修改了账户密码',
-    timestamp: '2023-04-10 15:45:22',
-    type: 'warning',
-    color: '#E6A23C'
-  },
-  {
-    content: '更新了邮箱地址',
-    timestamp: '2023-03-28 09:15:30',
-    type: 'info',
-    color: '#909399'
-  },
-  {
-    content: '首次登录系统',
-    timestamp: '2023-01-01 08:00:00',
-    type: 'primary',
-    color: '#409EFF'
   }
-];
+]);
 
 // 安全设置
 const securitySettings = reactive({
@@ -358,6 +352,7 @@ const securitySettings = reactive({
 // 头像上传相关
 const avatarDialogVisible = ref(false);
 const avatarUrl = ref('');
+const avatarFile = ref(null);
 
 // 打开头像上传对话框
 const handleChangeAvatar = () => {
@@ -372,6 +367,7 @@ const handleAvatarChange = (file: any) => {
     return;
   }
   
+  avatarFile.value = file.raw;
   const reader = new FileReader();
   reader.onload = (e) => {
     avatarUrl.value = e.target?.result as string;
@@ -388,7 +384,10 @@ const saveAvatar = async () => {
   
   try {
     // 这里应该调用API上传头像
-    // await userAPI.uploadAvatar(avatarFile);
+    // 需要后端提供上传头像的API接口
+    // const formData = new FormData();
+    // formData.append('avatar', avatarFile.value);
+    // await apiClient.post('/users/me/avatar', formData);
     
     // 更新本地头像
     userInfo.avatar = avatarUrl.value;
@@ -433,24 +432,41 @@ const formatRoleName = (role: string) => {
 };
 
 // 初始化
-onMounted(() => {
-  // 这里可以调用API获取更详细的用户信息
-  // const fetchUserDetail = async () => {
-  //   try {
-  //     const response = await userAPI.getUserDetail(authStore.user?.id);
-  //     Object.assign(userInfo, response.data);
-  //     Object.assign(basicForm, {
-  //       username: response.data.username,
-  //       email: response.data.email,
-  //       realName: response.data.realName,
-  //       phone: response.data.phone,
-  //       bio: response.data.bio
-  //     });
-  //   } catch (error) {
-  //     console.error('获取用户详情失败', error);
-  //   }
-  // };
-  // fetchUserDetail();
+onMounted(async () => {
+  try {
+    // 获取当前用户详细信息
+    const userData = await userAPI.getCurrentUser();
+    
+    // 更新用户信息
+    Object.assign(userInfo, {
+      ...userData,
+      createdAt: userData.createdAt ? dayjs(userData.createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知',
+      lastLogin: userData.lastLogin ? dayjs(userData.lastLogin).format('YYYY-MM-DD HH:mm:ss') : '未知'
+    });
+    
+    // 更新表单数据
+    Object.assign(basicForm, {
+      username: userData.username || '',
+      email: userData.email || '',
+      realName: userData.realName || '',
+      phone: userData.phone || '',
+      bio: userData.bio || ''
+    });
+    
+    // 如果有登录历史记录API，获取安全记录
+    // const securityLogs = await userAPI.getSecurityLogs();
+    // if (securityLogs && securityLogs.length > 0) {
+    //   securityActivities.value = securityLogs.map(log => ({
+    //     content: log.action,
+    //     timestamp: dayjs(log.timestamp).format('YYYY-MM-DD HH:mm:ss'),
+    //     type: log.type,
+    //     color: getLogColor(log.type)
+    //   }));
+    // }
+  } catch (error) {
+    console.error('获取用户信息失败', error);
+    ElMessage.error('获取用户信息失败，请刷新重试');
+  }
 });
 </script>
 

@@ -7,6 +7,7 @@ import resultAPI from './resultAPI';
 import announcementAPI from './announcementAPI';
 import userAPI from './userAPI';
 import roleAPI from './roleAPI';
+import statsAPI from './statsAPI';
 
 export {
   apiClient,
@@ -17,5 +18,6 @@ export {
   resultAPI,
   announcementAPI,
   userAPI,
-  roleAPI
+  roleAPI,
+  statsAPI
 }; 

@@ -181,6 +181,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, FormInstance, FormRules } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import dayjs from 'dayjs';
+import { resultAPI } from '../../../api/resultAPI';
+import { eventsAPI } from '../../../api/eventsAPI';
+import { userAPI } from '../../../api/userAPI';
 
 interface Event {
   id: number;
@@ -278,22 +282,19 @@ const rules = reactive<FormRules>({
 // 加载赛事列表
 const loadEvents = async () => {
   try {
-    // 实际应用中调用API获取赛事列表
-    // const response = await eventsAPI.getActiveEvents();
-    // events.value = response.data;
+    // 获取所有赛事
+    const allEvents = await eventsAPI.getAllEvents();
     
-    // 使用模拟数据
-    events.value = [
-      { id: 1, name: '2023年校园马拉松', status: 'IN_PROGRESS' },
-      { id: 2, name: '大学生篮球联赛', status: 'IN_PROGRESS' },
-      { id: 3, name: '游泳比赛', status: 'IN_PROGRESS' },
-      { id: 4, name: '校园足球杯', status: 'REGISTRATION' },
-      { id: 5, name: '冬季滑冰比赛', status: 'ENDED' }
-    ];
+    // 格式化赛事数据
+    events.value = allEvents.map(event => ({
+      id: event.id,
+      name: event.name,
+      status: event.status
+    }));
     
     // 过滤出进行中和已结束的赛事作为标签
     activeEvents.value = events.value.filter(event => 
-      ['IN_PROGRESS', 'ENDED'].includes(event.status)
+      ['ONGOING', 'COMPLETED'].includes(event.status)
     );
   } catch (error) {
     console.error('获取赛事列表失败', error);
@@ -305,125 +306,59 @@ const loadEvents = async () => {
 const fetchResultList = async () => {
   loading.value = true;
   try {
-    // 实际应用中调用API获取成绩列表
-    // const eventId = activeTabName.value === 'all' ? undefined : Number(activeTabName.value);
-    // const response = await resultAPI.getResultList({
-    //   page: currentPage.value - 1,
-    //   size: pageSize.value,
-    //   eventId: eventId,
-    //   athleteName: filterForm.athleteName
-    // });
-    // resultList.value = response.content;
-    // total.value = response.totalElements;
+    // 根据标签和条件获取成绩列表
+    let results = [];
     
-    // 使用模拟数据
-    setTimeout(() => {
-      const mockResults = [
-        {
-          id: 1,
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          athleteId: 1,
-          athleteName: '张三',
-          score: '00:35:42',
-          rank: 1,
-          unit: '分钟',
-          category: '男子10公里组',
-          recordTime: '2023-05-15 15:30:00',
-          recorder: 'admin',
-          remark: '破纪录成绩'
-        },
-        {
-          id: 2,
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          athleteId: 2,
-          athleteName: '李四',
-          score: '00:36:15',
-          rank: 2,
-          unit: '分钟',
-          category: '男子10公里组',
-          recordTime: '2023-05-15 15:30:10',
-          recorder: 'admin'
-        },
-        {
-          id: 3,
-          eventId: 1,
-          eventName: '2023年校园马拉松',
-          athleteId: 6,
-          athleteName: '孙八',
-          score: '00:18:22',
-          rank: 1,
-          unit: '分钟',
-          category: '男子5公里组',
-          recordTime: '2023-05-15 14:15:00',
-          recorder: 'admin'
-        },
-        {
-          id: 4,
-          eventId: 3,
-          eventName: '游泳比赛',
-          athleteId: 4,
-          athleteName: '赵六',
-          score: '00:01:05',
-          rank: 1,
-          unit: '分钟',
-          category: '男子100米自由泳',
-          recordTime: '2023-04-20 10:20:00',
-          recorder: 'event_manager'
-        },
-        {
-          id: 5,
-          eventId: 3,
-          eventName: '游泳比赛',
-          athleteId: 7,
-          athleteName: '周九',
-          score: '00:01:12',
-          rank: 1,
-          unit: '分钟',
-          category: '女子100米自由泳',
-          recordTime: '2023-04-20 11:00:00',
-          recorder: 'event_manager'
-        },
-        {
-          id: 6,
-          eventId: 5,
-          eventName: '冬季滑冰比赛',
-          athleteId: 8,
-          athleteName: '吴十',
-          score: '00:02:45',
-          rank: 1,
-          unit: '分钟',
-          category: '女子500米速滑',
-          recordTime: '2023-01-15 14:00:00',
-          recorder: 'admin'
-        }
-      ];
-      
-      // 根据标签过滤数据
-      if (activeTabName.value !== 'all') {
-        const eventId = Number(activeTabName.value);
-        resultList.value = mockResults.filter(result => result.eventId === eventId);
-      } else {
-        resultList.value = mockResults;
+    if (activeTabName.value !== 'all') {
+      // 获取特定赛事的成绩
+      const eventId = Number(activeTabName.value);
+      const response = await resultAPI.getEventResults(eventId, currentPage.value - 1, pageSize.value);
+      results = response.content;
+      total.value = response.totalElements;
+    } else {
+      // 获取所有赛事的成绩，这里需要遍历activeEvents中的所有赛事
+      const allResults = [];
+      for (const event of activeEvents.value) {
+        const response = await resultAPI.getEventResults(event.id, 0, 1000); // 获取大量数据以便筛选
+        allResults.push(...response.content);
       }
       
-      // 根据搜索条件过滤
+      // 根据搜索条件筛选
+      let filteredResults = allResults;
       if (filterForm.eventId) {
-        resultList.value = resultList.value.filter(result => result.eventId === filterForm.eventId);
+        filteredResults = filteredResults.filter(result => result.event.id === filterForm.eventId);
       }
       if (filterForm.athleteName) {
-        resultList.value = resultList.value.filter(result => 
-          result.athleteName.toLowerCase().includes(filterForm.athleteName.toLowerCase())
+        filteredResults = filteredResults.filter(result => 
+          result.athlete.username.toLowerCase().includes(filterForm.athleteName.toLowerCase())
         );
       }
       
-      total.value = resultList.value.length;
-      loading.value = false;
-    }, 500);
+      // 手动分页
+      total.value = filteredResults.length;
+      const startIndex = (currentPage.value - 1) * pageSize.value;
+      results = filteredResults.slice(startIndex, startIndex + pageSize.value);
+    }
+    
+    // 格式化结果数据
+    resultList.value = results.map(result => ({
+      id: result.id,
+      eventId: result.event.id,
+      eventName: result.event.name,
+      athleteId: result.athlete.id,
+      athleteName: result.athlete.username,
+      score: result.score,
+      rank: result.rank,
+      unit: '秒', // 默认单位，可以根据实际情况修改
+      category: '成人组', // 默认组别，可以根据实际情况修改
+      remark: result.remarks,
+      recordTime: dayjs(result.createdAt).format('YYYY-MM-DD HH:mm:ss'),
+      recorder: result.recordedBy?.username || '系统'
+    }));
   } catch (error) {
     console.error('获取成绩列表失败', error);
     ElMessage.error('获取成绩列表失败，请刷新重试');
+  } finally {
     loading.value = false;
   }
 };
@@ -451,24 +386,23 @@ const handleTabClick = () => {
 const searchAthletes = async (query: string) => {
   if (query) {
     athleteLoading.value = true;
-    // 实际应用中调用API搜索运动员
-    // const response = await athleteAPI.searchAthletes({ name: query });
-    // athletes.value = response.data;
-    
-    // 使用模拟数据
-    setTimeout(() => {
-      athletes.value = [
-        { id: 1, name: '张三' },
-        { id: 2, name: '李四' },
-        { id: 3, name: '王五' },
-        { id: 4, name: '赵六' },
-        { id: 5, name: '钱七' },
-        { id: 6, name: '孙八' },
-        { id: 7, name: '周九' },
-        { id: 8, name: '吴十' }
-      ].filter(athlete => athlete.name.includes(query));
+    try {
+      // 使用userAPI搜索用户
+      const users = await userAPI.getAllUsers();
+      
+      // 过滤出包含查询词的用户
+      athletes.value = users
+        .filter(user => user.username.toLowerCase().includes(query.toLowerCase()))
+        .map(user => ({
+          id: user.id,
+          name: user.username
+        }));
+    } catch (error) {
+      console.error('搜索运动员失败', error);
+      ElMessage.error('搜索运动员失败');
+    } finally {
       athleteLoading.value = false;
-    }, 300);
+    }
   } else {
     athletes.value = [];
   }
@@ -477,15 +411,20 @@ const searchAthletes = async (query: string) => {
 // 显示添加结果对话框
 const showAddResultDialog = () => {
   isEdit.value = false;
-  resetResultForm();
+  resultForm.id = 0;
+  resultForm.eventId = null;
+  resultForm.athleteId = null;
+  resultForm.score = '';
+  resultForm.rank = 1;
+  resultForm.unit = '秒';
+  resultForm.category = '成人组';
+  resultForm.remark = '';
   resultDialogVisible.value = true;
 };
 
 // 编辑结果
 const handleEdit = (row: Result) => {
   isEdit.value = true;
-  resetResultForm();
-  
   resultForm.id = row.id;
   resultForm.eventId = row.eventId;
   resultForm.athleteId = row.athleteId;
@@ -494,61 +433,7 @@ const handleEdit = (row: Result) => {
   resultForm.unit = row.unit;
   resultForm.category = row.category;
   resultForm.remark = row.remark || '';
-  
-  // 确保运动员选项中有当前运动员
-  athletes.value = [{ id: row.athleteId, name: row.athleteName }];
-  
   resultDialogVisible.value = true;
-};
-
-// 重置结果表单
-const resetResultForm = () => {
-  resultForm.id = 0;
-  resultForm.eventId = null;
-  resultForm.athleteId = null;
-  resultForm.score = '';
-  resultForm.rank = 1;
-  resultForm.unit = '';
-  resultForm.category = '';
-  resultForm.remark = '';
-  
-  if (resultFormRef.value) {
-    resultFormRef.value.resetFields();
-  }
-};
-
-// 提交结果表单
-const submitResultForm = async () => {
-  if (!resultFormRef.value) return;
-  
-  await resultFormRef.value.validate(async (valid) => {
-    if (valid) {
-      submitting.value = true;
-      try {
-        // 实际应用中调用API保存结果
-        // if (isEdit.value) {
-        //   await resultAPI.updateResult(resultForm.id, resultForm);
-        // } else {
-        //   await resultAPI.createResult(resultForm);
-        // }
-        
-        // 模拟成功
-        setTimeout(() => {
-          ElMessage.success(isEdit.value ? '成绩更新成功' : '成绩录入成功');
-          resultDialogVisible.value = false;
-          fetchResultList();
-          submitting.value = false;
-        }, 1000);
-      } catch (error) {
-        console.error('保存成绩失败', error);
-        ElMessage.error(isEdit.value ? '更新成绩失败，请重试' : '录入成绩失败，请重试');
-        submitting.value = false;
-      }
-    } else {
-      ElMessage.warning('请检查表单填写是否正确');
-      return false;
-    }
-  });
 };
 
 // 删除结果
@@ -563,21 +448,60 @@ const confirmDelete = async () => {
   
   deleting.value = true;
   try {
-    // 实际应用中调用API删除结果
-    // await resultAPI.deleteResult(deleteTarget.value.id);
-    
-    // 模拟成功
-    setTimeout(() => {
-      ElMessage.success('成绩删除成功');
-      deleteDialogVisible.value = false;
-      fetchResultList();
-      deleting.value = false;
-    }, 1000);
+    await resultAPI.deleteResult(deleteTarget.value.id);
+    ElMessage.success('成绩记录删除成功');
+    deleteDialogVisible.value = false;
+    fetchResultList(); // 刷新列表
   } catch (error) {
-    console.error('删除成绩失败', error);
-    ElMessage.error('删除成绩失败，请重试');
+    console.error('删除成绩记录失败', error);
+    ElMessage.error('删除成绩记录失败，请重试');
+  } finally {
     deleting.value = false;
   }
+};
+
+// 提交结果表单
+const submitResultForm = async () => {
+  if (!resultFormRef.value) return;
+  
+  await resultFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      submitting.value = true;
+      try {
+        const resultData = {
+          event: {
+            id: resultForm.eventId as number
+          },
+          athlete: {
+            id: resultForm.athleteId as number
+          },
+          score: resultForm.score,
+          rank: resultForm.rank,
+          remarks: resultForm.remark || ''
+        };
+        
+        if (isEdit.value) {
+          // 编辑已有成绩
+          await resultAPI.updateResult(resultForm.id, resultData);
+          ElMessage.success('成绩更新成功');
+        } else {
+          // 添加新成绩
+          await resultAPI.recordResult(resultData);
+          ElMessage.success('成绩录入成功');
+        }
+        
+        resultDialogVisible.value = false;
+        fetchResultList(); // 刷新列表
+      } catch (error) {
+        console.error('保存成绩失败', error);
+        ElMessage.error('保存成绩失败，请重试');
+      } finally {
+        submitting.value = false;
+      }
+    } else {
+      return false;
+    }
+  });
 };
 
 // 导出成绩数据

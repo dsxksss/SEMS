@@ -98,6 +98,7 @@ import { ElMessage, FormInstance, FormRules } from 'element-plus';
 import { useRouter, useRoute } from 'vue-router';
 import { eventsAPI } from '../../../api/eventsAPI';
 import { categoryAPI } from '../../../api/categoryAPI';
+import dayjs from 'dayjs';
 
 interface EventCategory {
   id: number;
@@ -160,18 +161,12 @@ const rules = reactive<FormRules>({
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    // 实际应用中调用API获取分类列表
-    // const response = await categoryAPI.getAllCategories();
-    // categories.value = response.data;
-    
-    // 使用模拟数据
-    categories.value = [
-      { id: 1, name: '田径赛事' },
-      { id: 2, name: '球类赛事' },
-      { id: 3, name: '水上赛事' },
-      { id: 4, name: '冰雪赛事' },
-      { id: 5, name: '格斗赛事' }
-    ];
+    // 获取所有分类
+    const categoriesData = await categoryAPI.getAllCategories();
+    categories.value = categoriesData.map(category => ({
+      id: category.id,
+      name: category.name
+    }));
   } catch (error) {
     console.error('获取分类列表失败', error);
     ElMessage.error('获取分类列表失败');
@@ -182,44 +177,27 @@ const loadCategories = async () => {
 const fetchEventDetail = async () => {
   loading.value = true;
   try {
-    // 实际应用中调用API获取赛事详情
-    // const response = await eventsAPI.getEventById(eventId.value);
-    // const eventData = response.data;
+    // 调用API获取赛事详情
+    const eventData = await eventsAPI.getEventById(eventId.value);
     
-    // 使用模拟数据
-    setTimeout(() => {
-      const mockEvent = {
-        id: eventId.value,
-        name: '2023年校园马拉松',
-        categoryId: 1,
-        category: '田径赛事',
-        startDate: '2023-05-15',
-        endDate: '2023-05-15',
-        registrationStartDate: '2023-04-15',
-        registrationEndDate: '2023-05-10',
-        location: '校园田径场',
-        organizer: '体育部',
-        description: '校园马拉松活动，分为3公里、5公里和10公里三个组别',
-        registrationCount: 85,
-        maxParticipants: 200,
-        status: 'NOT_STARTED',
-        createdAt: '2023-04-01 10:00:00',
-        createdBy: 'admin'
-      };
-
-      // 填充表单数据
-      eventForm.name = mockEvent.name;
-      eventForm.categoryId = mockEvent.categoryId;
-      eventForm.eventDates = [mockEvent.startDate, mockEvent.endDate];
-      eventForm.registrationDates = [mockEvent.registrationStartDate, mockEvent.registrationEndDate];
-      eventForm.location = mockEvent.location;
-      eventForm.organizer = mockEvent.organizer;
-      eventForm.maxParticipants = mockEvent.maxParticipants;
-      eventForm.description = mockEvent.description;
-      eventForm.status = mockEvent.status;
-
-      loading.value = false;
-    }, 800);
+    // 填充表单数据
+    eventForm.name = eventData.name;
+    eventForm.categoryId = eventData.category?.id;
+    eventForm.eventDates = [
+      dayjs(eventData.startTime).format('YYYY-MM-DD'),
+      dayjs(eventData.endTime).format('YYYY-MM-DD')
+    ];
+    eventForm.registrationDates = [
+      dayjs(eventData.registrationDeadline).subtract(14, 'day').format('YYYY-MM-DD'), // 假设报名开始时间为截止前14天
+      dayjs(eventData.registrationDeadline).format('YYYY-MM-DD')
+    ];
+    eventForm.location = eventData.location;
+    eventForm.organizer = eventData.organizer || '体育部'; // 如果API没提供，使用默认值
+    eventForm.maxParticipants = eventData.maxParticipants;
+    eventForm.description = eventData.description;
+    eventForm.status = eventData.status;
+    
+    loading.value = false;
   } catch (error) {
     console.error('获取赛事详情失败', error);
     ElMessage.error('获取赛事详情失败，请返回重试');
@@ -241,32 +219,27 @@ const submitForm = async () => {
 
         // 构建提交的数据
         const eventData = {
-          id: eventId.value,
           name: eventForm.name,
-          categoryId: eventForm.categoryId,
-          startDate,
-          endDate,
-          registrationStartDate,
-          registrationEndDate,
+          category: {
+            id: eventForm.categoryId
+          },
+          startTime: dayjs(startDate).format('YYYY-MM-DD HH:mm:ss'),
+          endTime: dayjs(endDate).format('YYYY-MM-DD HH:mm:ss'),
+          registrationDeadline: dayjs(registrationEndDate).format('YYYY-MM-DD HH:mm:ss'),
           location: eventForm.location,
-          organizer: eventForm.organizer,
           maxParticipants: eventForm.maxParticipants,
           description: eventForm.description,
           status: eventForm.status
         };
 
-        // 实际应用中调用API更新赛事
-        // await eventsAPI.updateEvent(eventId.value, eventData);
-        
-        // 模拟成功
-        setTimeout(() => {
-          ElMessage.success('赛事更新成功');
-          router.push('/admin/events/list');
-          submitting.value = false;
-        }, 1000);
+        // 调用API更新赛事
+        await eventsAPI.updateEvent(eventId.value, eventData);
+        ElMessage.success('赛事更新成功');
+        router.push('/admin/events/list');
       } catch (error) {
         console.error('更新赛事失败', error);
         ElMessage.error('更新赛事失败，请重试');
+      } finally {
         submitting.value = false;
       }
     } else {

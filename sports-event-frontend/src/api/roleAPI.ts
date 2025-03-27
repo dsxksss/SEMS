@@ -84,21 +84,9 @@ export const roleAPI = {
    * 获取所有权限
    */
   getAllPermissions: async () => {
-    try {
-      console.log('获取所有权限列表...');
-      const response = await apiClient.get<string[]>('/roles/permissions');
-      console.log('获取权限列表成功:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('获取权限列表失败:', error);
-      // 返回模拟权限数据
-      return [
-        'user:view', 'user:create', 'user:edit', 'user:delete',
-        'event:view', 'event:create', 'event:edit', 'event:delete',
-        'registration:view', 'registration:approve', 'registration:cancel',
-        'announcement:view', 'announcement:create', 'announcement:edit', 'announcement:delete'
-      ];
-    }
+    const response = await apiClient.get<string[]>('/roles/permissions');
+    console.log('获取权限列表成功:', response.data);
+    return response.data;
   }
 };
 
