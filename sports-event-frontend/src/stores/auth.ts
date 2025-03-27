@@ -88,12 +88,17 @@ export const useAuthStore = defineStore('auth', {
         console.log('用户角色:', this.user.roles);
         console.log('是否管理员:', this.isAdmin);
         
-        // 登录成功，如果是管理员，直接重定向到管理后台
+        // 登录成功，根据角色重定向到不同页面
         if (this.isAdmin) {
           console.log('用户是管理员，准备跳转到管理后台...');
           // 确保异步完成后再跳转
           setTimeout(() => {
             router.push('/admin/dashboard');
+          }, 100);
+        } else {
+          console.log('普通用户登录，准备跳转到用户界面...');
+          setTimeout(() => {
+            router.push('/user/dashboard');
           }, 100);
         }
         

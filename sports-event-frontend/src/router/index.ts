@@ -2,13 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { authAPI } from '../api/authAPI';
 import { useAuthStore } from '../stores/auth';
 import AdminLayout from '../components/AdminLayout.vue';
+import UserLayout from '../views/user/UserLayout.vue';
 
 // 路由配置
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../views/Home.vue'),
+    redirect: '/user/dashboard',
     meta: { requiresAuth: true }
   },
   {
@@ -22,6 +23,62 @@ const routes = [
     name: 'Register',
     component: () => import('../views/auth/Register.vue'),
     meta: { guest: true }
+  },
+  // 普通用户路由
+  {
+    path: '/user',
+    component: UserLayout,
+    redirect: '/user/dashboard',
+    meta: { 
+      requiresAuth: true 
+    },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'UserDashboard',
+        component: () => import('../views/user/Dashboard.vue'),
+        meta: { 
+          title: '用户首页',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'events',
+        name: 'UserEventList',
+        component: () => import('../views/user/EventList.vue'),
+        meta: { 
+          title: '赛事列表',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'events/:id',
+        name: 'UserEventDetail',
+        component: () => import('../views/user/EventDetail.vue'),
+        meta: { 
+          title: '赛事详情',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'registrations',
+        name: 'UserRegistrations',
+        component: () => import('../views/user/RegistrationList.vue'),
+        meta: { 
+          title: '我的报名',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'announcements',
+        name: 'UserAnnouncements',
+        component: () => import('../views/user/AnnouncementList.vue'),
+        meta: { 
+          title: '公告列表',
+          requiresAuth: true
+        }
+      }
+    ]
   },
   // 管理员路由
   {
@@ -186,11 +243,16 @@ router.beforeEach((to, _from, next) => {
   } 
   // 需要管理员权限的路由
   else if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    next('/');
+    next('/user/dashboard');
   }
   // 仅供游客访问的路由（已登录用户会被重定向到首页）
   else if (to.meta.guest && isAuthenticated) {
-    next('/');
+    // 根据角色重定向到相应的首页
+    if (authStore.isAdmin) {
+      next('/admin/dashboard');
+    } else {
+      next('/user/dashboard');
+    }
   } 
   // 其他情况正常导航
   else {
