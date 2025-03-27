@@ -44,7 +44,7 @@
             router
           >
             <el-menu-item index="/user/dashboard">
-              <el-icon><HomeFilled /></el-icon>
+              <el-icon><House /></el-icon>
               <span>首页</span>
             </el-menu-item>
             
@@ -84,9 +84,8 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { 
-  HomeFilled, 
+  House, 
   Calendar, 
-  Ticket, 
   Bell, 
   CaretBottom, 
   SwitchButton,
