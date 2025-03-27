@@ -93,6 +93,7 @@ import { ElMessage, FormInstance, FormRules } from 'element-plus';
 import { useRouter } from 'vue-router';
 import { eventsAPI } from '../../../api/eventsAPI';
 import { categoryAPI } from '../../../api/categoryAPI';
+import dayjs from 'dayjs';
 
 interface EventCategory {
   id: number;
@@ -151,18 +152,12 @@ const rules = reactive<FormRules>({
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    // 实际应用中调用API获取分类列表
-    // const response = await categoryAPI.getAllCategories();
-    // categories.value = response.data;
-    
-    // 使用模拟数据
-    categories.value = [
-      { id: 1, name: '田径赛事' },
-      { id: 2, name: '球类赛事' },
-      { id: 3, name: '水上赛事' },
-      { id: 4, name: '冰雪赛事' },
-      { id: 5, name: '格斗赛事' }
-    ];
+    // 调用API获取分类列表
+    const response = await categoryAPI.getAllCategories();
+    categories.value = response.map(category => ({
+      id: category.id,
+      name: category.name
+    }));
   } catch (error) {
     console.error('获取分类列表失败', error);
     ElMessage.error('获取分类列表失败');
@@ -184,30 +179,27 @@ const submitForm = async () => {
         // 构建提交的数据
         const eventData = {
           name: eventForm.name,
-          categoryId: eventForm.categoryId,
-          startDate,
-          endDate,
-          registrationStartDate,
-          registrationEndDate,
+          category: {
+            id: eventForm.categoryId
+          },
+          startTime: dayjs(startDate).format('YYYY-MM-DD HH:mm:ss'),
+          endTime: dayjs(endDate).format('YYYY-MM-DD HH:mm:ss'),
+          registrationDeadline: dayjs(registrationEndDate).format('YYYY-MM-DD HH:mm:ss'),
           location: eventForm.location,
           organizer: eventForm.organizer,
           maxParticipants: eventForm.maxParticipants,
           description: eventForm.description,
-          status: 'NOT_STARTED'  // 默认状态为未开始
+          status: 'UPCOMING'  // 默认状态为未开始
         };
 
-        // 实际应用中调用API创建赛事
-        // const response = await eventsAPI.createEvent(eventData);
-        
-        // 模拟成功
-        setTimeout(() => {
-          ElMessage.success('赛事创建成功');
-          router.push('/admin/events/list');
-          submitting.value = false;
-        }, 1000);
+        // 调用API创建赛事
+        await eventsAPI.createEvent(eventData);
+        ElMessage.success('赛事创建成功');
+        router.push('/admin/events/list');
       } catch (error) {
         console.error('创建赛事失败', error);
         ElMessage.error('创建赛事失败，请重试');
+      } finally {
         submitting.value = false;
       }
     } else {

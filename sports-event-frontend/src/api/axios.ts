@@ -54,20 +54,27 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
         
-        // 对于角色相关API，由角色API自己处理，不在这里自动登出
-        if (url.includes('/roles')) {
-          console.warn('角色API请求返回401，将由roleAPI模块处理');
+        // 对于角色相关API和事件相关API，由各自API模块处理，不在这里自动登出
+        if (url.includes('/roles') || url.includes('/events/')) {
+          console.warn(`${url.includes('/roles') ? '角色' : '事件'}API请求返回401，将由相应API模块处理`);
           
           // 检查token是否已经过期
           const authStore = useAuthStore();
-          if (authStore && authStore.checkTokenExpiration()) {
+          if (authStore && authStore.checkTokenExpiration(false)) {
             console.warn('Token已过期，需要重新登录');
             ElMessage.error('您的登录已过期，请重新登录');
+            
+            // 清除认证信息
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
             
             // 延迟执行登出操作，让用户看到提示信息
             setTimeout(() => {
               authStore.logout();
             }, 1500);
+            
+            return Promise.reject(error);
           }
           
           return Promise.reject(error);
@@ -80,23 +87,32 @@ apiClient.interceptors.response.use(
           try {
             console.log('尝试刷新token...');
             
-            // 这里可以添加刷新token的逻辑
-            // const refreshResponse = await apiClient.post('/auth/refresh');
-            // if (refreshResponse.data && refreshResponse.data.token) {
-            //   localStorage.setItem('token', refreshResponse.data.token);
-            //   console.log('token刷新成功');
-            //   
-            //   // 重新发送之前的请求
-            //   error.config.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
-            //   return apiClient(error.config);
-            // }
+            // 检查token是否已经过期
+            const authStore = useAuthStore();
+            if (authStore && authStore.checkTokenExpiration(false)) {
+              console.warn('Token已过期，需要重新登录');
+              ElMessage.error('您的登录已过期，请重新登录');
+              
+              // 清除认证信息
+              localStorage.removeItem('token');
+              localStorage.removeItem('refreshToken');
+              localStorage.removeItem('user');
+              
+              // 延迟执行登出操作，让用户看到提示信息
+              setTimeout(() => {
+                authStore.logout();
+              }, 1500);
+              
+              return Promise.reject(error);
+            }
             
-            // 如果后端暂不支持刷新token，直接进入catch块
+            // 由于后端暂不支持刷新token，直接进入catch块
             throw new Error('刷新token失败');
           } catch (refreshError) {
             console.error('刷新token失败，需要重新登录:', refreshError);
             // 清除认证信息
             localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
             
             // 使用Pinia store的logout方法

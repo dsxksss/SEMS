@@ -78,6 +78,10 @@ export const useAuthStore = defineStore('auth', {
         
         // 存储到localStorage
         localStorage.setItem('token', response.token);
+        // 保存刷新token（如果后端提供了）
+        if (response.refreshToken) {
+          localStorage.setItem('refreshToken', response.refreshToken);
+        }
         localStorage.setItem('user', JSON.stringify(this.user));
         
         console.log('登录成功, 用户信息:', this.user);
@@ -161,6 +165,7 @@ export const useAuthStore = defineStore('auth', {
       
       // 清除localStorage
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       
       // 跳转到登录页
@@ -181,12 +186,12 @@ export const useAuthStore = defineStore('auth', {
     },
     
     // 检查token是否已过期
-    checkTokenExpiration() {
+    checkTokenExpiration(showLogs = true) {
       const token = localStorage.getItem('token');
       
       // 如果没有token，则视为已过期
       if (!token) {
-        console.log('没有找到token');
+        if (showLogs) console.log('没有找到token');
         return true;
       }
       
@@ -199,8 +204,22 @@ export const useAuthStore = defineStore('auth', {
         }
         
         // 解码payload
-        const payload = JSON.parse(atob(parts[1]));
-        console.log('Token payload:', payload);
+        let payload;
+        try {
+          const base64Url = parts[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64).split('').map(c => {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('')
+          );
+          payload = JSON.parse(jsonPayload);
+        } catch (e) {
+          console.error('无法解码Token payload:', e);
+          return true;
+        }
+        
+        if (showLogs) console.log('Token payload:', payload);
         
         // 检查exp(过期时间)字段
         if (payload.exp) {
@@ -208,14 +227,22 @@ export const useAuthStore = defineStore('auth', {
           const currentTime = Date.now();
           
           const timeUntilExpiration = expirationTime - currentTime;
-          console.log(`Token过期时间: ${new Date(expirationTime).toLocaleString()}`);
-          console.log(`当前时间: ${new Date(currentTime).toLocaleString()}`);
-          console.log(`剩余时间: ${Math.floor(timeUntilExpiration / 1000 / 60)} 分钟`);
+          if (showLogs) {
+            console.log(`Token过期时间: ${new Date(expirationTime).toLocaleString()}`);
+            console.log(`当前时间: ${new Date(currentTime).toLocaleString()}`);
+            console.log(`剩余时间: ${Math.floor(timeUntilExpiration / 1000 / 60)} 分钟`);
+          }
           
           // 如果token已过期
           if (currentTime > expirationTime) {
-            console.log('Token已过期');
+            if (showLogs) console.log('Token已过期');
             return true;
+          }
+          
+          // 如果token快要过期（剩余10分钟内）
+          if (timeUntilExpiration < 10 * 60 * 1000) {
+            if (showLogs) console.warn('Token即将过期，剩余不到10分钟');
+            // 这里可以触发刷新token的逻辑
           }
           
           // token没有过期

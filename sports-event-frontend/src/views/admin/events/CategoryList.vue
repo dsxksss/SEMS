@@ -160,43 +160,50 @@ const handleAddCategory = () => {
 };
 
 // 编辑分类
-const handleEdit = (row: EventCategory) => {
+const handleEdit = async (row: EventCategory) => {
   isEdit.value = true;
   categoryForm.id = row.id;
   categoryForm.name = row.name;
-  categoryForm.description = row.description;
+  categoryForm.description = row.description || '';
   categoryForm.isActive = row.isActive;
   dialogVisible.value = true;
 };
 
 // 启用/禁用分类
-const handleToggleStatus = (row: EventCategory) => {
+const handleToggleStatus = async (row: EventCategory) => {
   const newStatus = !row.isActive;
   const actionText = newStatus ? '启用' : '禁用';
   
-  ElMessageBox.confirm(
-    `确认要${actionText}分类 "${row.name}" 吗？`,
-    '确认操作',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  )
-    .then(async () => {
-      try {
-        // 调用API更新分类状态
-        await categoryAPI.updateCategory(row.id, { isActive: newStatus });
-        ElMessage.success(`${actionText}分类成功`);
-        fetchCategoryList(); // 刷新列表
-      } catch (error) {
-        console.error(`${actionText}分类失败`, error);
-        ElMessage.error(`${actionText}分类失败，请重试`);
+  try {
+    await ElMessageBox.confirm(
+      `确认要${actionText}分类 "${row.name}" 吗？`,
+      '确认操作',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
       }
-    })
-    .catch(() => {
-      // 用户取消操作
+    );
+    
+    // 调用API更新分类状态
+    const result = await categoryAPI.updateCategory(row.id, {
+      isActive: newStatus
     });
+    
+    // 更新本地数据
+    const index = categoryList.value.findIndex(item => item.id === row.id);
+    if (index !== -1) {
+      categoryList.value[index] = result;
+    }
+    
+    ElMessage.success(`${actionText}分类成功`);
+    await fetchCategoryList(); // 刷新列表
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(`${actionText}分类失败`, error);
+      ElMessage.error(`${actionText}分类失败，请重试`);
+    }
+  }
 };
 
 // 删除分类
@@ -220,8 +227,12 @@ const handleDelete = async (category: EventCategory) => {
     
     // 调用API删除分类
     await categoryAPI.deleteCategory(category.id);
+    
+    // 从本地列表中移除
+    categoryList.value = categoryList.value.filter(item => item.id !== category.id);
+    
     ElMessage.success('删除分类成功');
-    fetchCategoryList(); // 刷新列表
+    await fetchCategoryList(); // 刷新列表
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除分类失败', error);
@@ -240,7 +251,7 @@ const saveCategory = async () => {
       try {
         if (isEdit.value) {
           // 编辑分类
-          await categoryAPI.updateCategory(
+          const result = await categoryAPI.updateCategory(
             categoryForm.id, 
             {
               name: categoryForm.name,
@@ -248,18 +259,26 @@ const saveCategory = async () => {
               isActive: categoryForm.isActive
             }
           );
+          // 更新本地数据列表中对应的项
+          const index = categoryList.value.findIndex(item => item.id === categoryForm.id);
+          if (index !== -1) {
+            categoryList.value[index] = result;
+          }
           ElMessage.success('更新分类成功');
         } else {
           // 添加分类
-          await categoryAPI.createCategory({
+          const result = await categoryAPI.createCategory({
             name: categoryForm.name,
             description: categoryForm.description,
             isActive: categoryForm.isActive
           } as Omit<EventCategory, 'id'>);
+          // 添加新创建的分类到列表
+          categoryList.value.unshift(result);
           ElMessage.success('添加分类成功');
         }
         dialogVisible.value = false;
-        fetchCategoryList(); // 刷新分类列表
+        // 刷新完整列表
+        await fetchCategoryList();
       } catch (error) {
         console.error('保存分类失败', error);
         ElMessage.error('保存分类失败，请重试');

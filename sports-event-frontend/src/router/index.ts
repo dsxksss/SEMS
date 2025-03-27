@@ -99,22 +99,22 @@ const routes = [
         }
       },
       {
-        path: 'events/create',
-        name: 'CreateEvent',
-        component: () => import('../views/admin/events/CreateEvent.vue'),
+        path: 'events/edit/:id',
+        name: 'EditEvent',
+        component: () => import('../views/admin/events/EditEvent.vue'),
         meta: { 
-          title: '创建赛事',
+          title: '编辑赛事',
           parent: '赛事项目管理',
           requiresAuth: true,
           requiresAdmin: true
         }
       },
       {
-        path: 'events/edit/:id',
-        name: 'EditEvent',
-        component: () => import('../views/admin/events/EditEvent.vue'),
+        path: 'events/:id/participants',
+        name: 'EventParticipants',
+        component: () => import('../views/admin/events/EventParticipants.vue'),
         meta: { 
-          title: '编辑赛事',
+          title: '赛事参与者管理',
           parent: '赛事项目管理',
           requiresAuth: true,
           requiresAdmin: true

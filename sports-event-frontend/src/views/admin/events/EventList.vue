@@ -1,6 +1,10 @@
 <template>
   <div class="event-list">
     <div class="filter-container">
+      <div class="filter-header">
+        <h3>赛事过滤</h3>
+        <el-button type="primary" @click="showCreateEventDialog">创建赛事</el-button>
+      </div>
       <el-form :inline="true" :model="filterForm" class="form-inline">
         <el-form-item label="赛事名称">
           <el-input v-model="filterForm.name" placeholder="输入赛事名称搜索" clearable />
@@ -34,7 +38,6 @@
     <div class="table-container">
       <div class="table-header">
         <h3>赛事列表</h3>
-        <el-button type="primary" @click="$router.push('/admin/events/create')">创建赛事</el-button>
       </div>
 
       <el-table
@@ -75,23 +78,22 @@
               @click="handleEdit(scope.row)"
             >编辑</el-button>
             <el-button
-              v-if="scope.row.status === 'UPCOMING'"
               size="small"
-              type="info"
-              @click="handleChangeStatus(scope.row, 'ONGOING')"
-            >开始比赛</el-button>
-            <el-button
-              v-if="scope.row.status === 'ONGOING'"
-              size="small"
-              type="danger"
-              @click="handleChangeStatus(scope.row, 'COMPLETED')"
-            >结束比赛</el-button>
-            <el-button
-              v-if="canCancel(scope.row)"
-              size="small"
-              type="danger"
-              @click="handleChangeStatus(scope.row, 'CANCELLED')"
-            >取消赛事</el-button>
+              type="warning"
+              @click="$router.push(`/admin/events/${scope.row.id}/participants`)"
+            >参与者</el-button>
+            <el-dropdown split-button type="info" size="small" @command="(command) => handleCommand(command, scope.row)">
+              更多操作
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="scope.row.status === 'UPCOMING'" command="start-registration">开始报名</el-dropdown-item>
+                  <el-dropdown-item v-if="scope.row.status === 'REGISTRATION'" command="end-registration">结束报名</el-dropdown-item>
+                  <el-dropdown-item v-if="scope.row.status === 'REGISTRATION' || scope.row.status === 'UPCOMING'" command="start-event">开始比赛</el-dropdown-item>
+                  <el-dropdown-item v-if="scope.row.status === 'ONGOING'" command="end-event">结束比赛</el-dropdown-item>
+                  <el-dropdown-item v-if="canCancel(scope.row)" command="cancel-event">取消赛事</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -170,13 +172,102 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 创建赛事弹窗 -->
+    <el-dialog
+      title="创建赛事"
+      v-model="createDialogVisible"
+      width="800px"
+    >
+      <div class="event-form-container">
+        <el-form 
+          ref="eventFormRef"
+          :model="eventForm"
+          :rules="eventFormRules"
+          label-width="120px"
+          label-position="right"
+          class="event-form"
+        >
+          <el-form-item label="赛事名称" prop="name">
+            <el-input v-model="eventForm.name" placeholder="请输入赛事名称" />
+          </el-form-item>
+          
+          <el-form-item label="赛事分类" prop="categoryId">
+            <el-select v-model="eventForm.categoryId" placeholder="请选择赛事分类" style="width: 100%">
+              <el-option
+                v-for="category in categories"
+                :key="category.id"
+                :label="category.name"
+                :value="category.id"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="赛事日期" prop="eventDates">
+            <el-date-picker
+              v-model="eventForm.eventDates"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 100%"
+            />
+          </el-form-item>
+          
+          <el-form-item label="报名时间" prop="registrationDates">
+            <el-date-picker
+              v-model="eventForm.registrationDates"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 100%"
+            />
+          </el-form-item>
+          
+          <el-form-item label="比赛地点" prop="location">
+            <el-input v-model="eventForm.location" placeholder="请输入比赛地点" />
+          </el-form-item>
+          
+          <el-form-item label="主办方" prop="organizer">
+            <el-input v-model="eventForm.organizer" placeholder="请输入主办方" />
+          </el-form-item>
+          
+          <el-form-item label="最大参与人数" prop="maxParticipants">
+            <el-input-number 
+              v-model="eventForm.maxParticipants" 
+              :min="1" 
+              :max="10000" 
+              :step="1"
+              style="width: 100%"
+            />
+          </el-form-item>
+          
+          <el-form-item label="赛事描述" prop="description">
+            <el-input
+              v-model="eventForm.description"
+              type="textarea"
+              :rows="6"
+              placeholder="请输入赛事详细描述，包括赛事规则、奖励等信息"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button @click="resetEventForm">重置</el-button>
+          <el-button type="primary" @click="submitEventForm" :loading="submitting">创建赛事</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus';
 import { eventsAPI, categoryAPI } from '../../../api';
 import dayjs from 'dayjs';
 
@@ -240,6 +331,8 @@ const statusChangeMessage = computed(() => {
   switch (targetStatus.value) {
     case 'REGISTRATION':
       return `确定要开放赛事 "${statusChangeEvent.value.name}" 的报名吗？开放后，用户可以进行报名。`;
+    case 'UPCOMING':
+      return `确定要关闭赛事 "${statusChangeEvent.value.name}" 的报名吗？关闭后，用户将无法报名。`;
     case 'ONGOING':
       return `确定要将赛事 "${statusChangeEvent.value.name}" 标记为进行中吗？这将关闭报名通道。`;
     case 'COMPLETED':
@@ -250,6 +343,123 @@ const statusChangeMessage = computed(() => {
       return `确定要修改赛事 "${statusChangeEvent.value.name}" 的状态吗？`;
   }
 });
+
+// 创建赛事相关
+const createDialogVisible = ref(false);
+const eventFormRef = ref<FormInstance>();
+const submitting = ref(false);
+
+// 赛事表单
+const eventForm = reactive({
+  name: '',
+  categoryId: null as number | null,
+  eventDates: [] as string[],
+  registrationDates: [] as string[],
+  location: '',
+  organizer: '',
+  maxParticipants: 100,
+  description: ''
+});
+
+// 表单验证规则
+const eventFormRules = reactive<FormRules>({
+  name: [
+    { required: true, message: '请输入赛事名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度应为2到50个字符', trigger: 'blur' }
+  ],
+  categoryId: [
+    { required: true, message: '请选择赛事分类', trigger: 'change' }
+  ],
+  eventDates: [
+    { required: true, message: '请选择赛事日期', trigger: 'change' }
+  ],
+  registrationDates: [
+    { required: true, message: '请选择报名时间', trigger: 'change' }
+  ],
+  location: [
+    { required: true, message: '请输入比赛地点', trigger: 'blur' }
+  ],
+  organizer: [
+    { required: true, message: '请输入主办方', trigger: 'blur' }
+  ],
+  maxParticipants: [
+    { required: true, message: '请输入最大参与人数', trigger: 'change' }
+  ],
+  description: [
+    { required: true, message: '请输入赛事描述', trigger: 'blur' },
+    { min: 10, max: 2000, message: '描述长度应为10到2000个字符', trigger: 'blur' }
+  ]
+});
+
+// 显示创建赛事弹窗
+const showCreateEventDialog = () => {
+  resetEventForm();
+  createDialogVisible.value = true;
+};
+
+// 重置创建赛事表单
+const resetEventForm = () => {
+  if (eventFormRef.value) {
+    eventFormRef.value.resetFields();
+  } else {
+    eventForm.name = '';
+    eventForm.categoryId = null;
+    eventForm.eventDates = [];
+    eventForm.registrationDates = [];
+    eventForm.location = '';
+    eventForm.organizer = '';
+    eventForm.maxParticipants = 100;
+    eventForm.description = '';
+  }
+};
+
+// 提交创建赛事表单
+const submitEventForm = async () => {
+  if (!eventFormRef.value) return;
+
+  await eventFormRef.value.validate(async (valid) => {
+    if (valid) {
+      submitting.value = true;
+      try {
+        // 处理日期
+        const [startDate, endDate] = eventForm.eventDates;
+        const [registrationStartDate, registrationEndDate] = eventForm.registrationDates;
+
+        // 构建提交的数据
+        const eventData = {
+          name: eventForm.name,
+          category: {
+            id: eventForm.categoryId
+          },
+          startTime: dayjs(startDate).format('YYYY-MM-DD HH:mm:ss'),
+          endTime: dayjs(endDate).format('YYYY-MM-DD HH:mm:ss'),
+          registrationDeadline: dayjs(registrationEndDate).format('YYYY-MM-DD HH:mm:ss'),
+          location: eventForm.location,
+          organizer: eventForm.organizer,
+          maxParticipants: eventForm.maxParticipants,
+          description: eventForm.description,
+          status: 'UPCOMING'  // 默认状态为未开始
+        };
+
+        // 调用API创建赛事
+        await eventsAPI.createEvent(eventData);
+        ElMessage.success('赛事创建成功');
+        createDialogVisible.value = false;
+        
+        // 刷新赛事列表
+        fetchEventList();
+      } catch (error) {
+        console.error('创建赛事失败', error);
+        ElMessage.error('创建赛事失败，请重试');
+      } finally {
+        submitting.value = false;
+      }
+    } else {
+      ElMessage.warning('请检查表单填写是否正确');
+      return false;
+    }
+  });
+};
 
 // 加载分类列表
 const loadCategories = async () => {
@@ -436,6 +646,33 @@ const handleCurrentChange = (page: number) => {
   fetchEventList();
 };
 
+// 处理状态变更的命令
+const handleCommand = (command: string, row: Event) => {
+  switch (command) {
+    case 'start-registration':
+      handleChangeStatus(row, 'REGISTRATION');
+      break;
+    case 'end-registration':
+      ElMessageBox.confirm('结束报名后，用户将无法再报名参加此赛事，确定继续？', '确认操作', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        handleChangeStatus(row, 'UPCOMING');
+      }).catch(() => {});
+      break;
+    case 'start-event':
+      handleChangeStatus(row, 'ONGOING');
+      break;
+    case 'end-event':
+      handleChangeStatus(row, 'COMPLETED');
+      break;
+    case 'cancel-event':
+      handleChangeStatus(row, 'CANCELLED');
+      break;
+  }
+};
+
 // 初始化加载
 onMounted(() => {
   loadCategories();
@@ -453,6 +690,19 @@ onMounted(() => {
   padding: 20px;
   border-radius: 4px;
   margin-bottom: 20px;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filter-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .table-container {
@@ -498,5 +748,14 @@ onMounted(() => {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+.event-form-container {
+  padding: 20px 0;
+}
+
+.event-form {
+  max-width: 100%;
 }
 </style> 

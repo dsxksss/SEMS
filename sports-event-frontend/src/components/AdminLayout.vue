@@ -40,7 +40,6 @@
             </template>
             <el-menu-item index="/admin/events/categories">赛事分类</el-menu-item>
             <el-menu-item index="/admin/events/list">赛事列表</el-menu-item>
-            <el-menu-item index="/admin/events/create">创建赛事</el-menu-item>
           </el-sub-menu>
           
           <el-menu-item index="/admin/registrations">

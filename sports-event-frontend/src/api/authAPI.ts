@@ -36,6 +36,7 @@ export interface AuthResponse {
   username: string;
   email: string;
   roles: string[];
+  refreshToken?: string;
 }
 
 export const authAPI = {
@@ -56,6 +57,14 @@ export const authAPI = {
   },
 
   /**
+   * 刷新认证令牌
+   */
+  refreshToken: async (refreshToken: string) => {
+    const response = await apiClient.post<{ token: string, refreshToken?: string }>('/auth/refresh', { refreshToken });
+    return response.data;
+  },
+
+  /**
    * 检查登录状态
    */
   checkAuthStatus: (): boolean => {
@@ -68,6 +77,7 @@ export const authAPI = {
    */
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
   }
 };
