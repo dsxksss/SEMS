@@ -71,24 +71,40 @@ export const resultAPI = {
    * 管理员: 记录成绩
    */
   recordResult: async (result: Omit<EventResult, 'id' | 'recordedBy' | 'createdAt' | 'updatedAt'>) => {
-    const response = await apiClient.post<EventResult>('/results', result);
-    return response.data;
+    try {
+      const response = await apiClient.post<EventResult>('/results', result);
+      return response.data;
+    } catch (error: any) {
+      console.error('记录成绩失败:', error);
+      // 重新抛出错误，让调用方处理
+      throw error;
+    }
   },
 
   /**
    * 管理员: 更新成绩
    */
   updateResult: async (id: number, result: Partial<EventResult>) => {
-    const response = await apiClient.put<EventResult>(`/results/${id}`, result);
-    return response.data;
+    try {
+      const response = await apiClient.put<EventResult>(`/results/${id}`, result);
+      return response.data;
+    } catch (error: any) {
+      console.error('更新成绩失败:', error);
+      throw error;
+    }
   },
 
   /**
    * 管理员: 删除成绩
    */
   deleteResult: async (id: number) => {
-    const response = await apiClient.delete(`/results/${id}`);
-    return response.data;
+    try {
+      const response = await apiClient.delete(`/results/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('删除成绩失败:', error);
+      throw error;
+    }
   }
 };
 

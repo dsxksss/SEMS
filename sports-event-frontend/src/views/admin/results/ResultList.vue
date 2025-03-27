@@ -185,6 +185,7 @@ import dayjs from 'dayjs';
 import { resultAPI } from '../../../api/resultAPI';
 import { eventsAPI } from '../../../api/eventsAPI';
 import { userAPI } from '../../../api/userAPI';
+import { useAuthStore } from '../../../stores/auth';
 
 interface Event {
   id: number;
@@ -306,6 +307,12 @@ const loadEvents = async () => {
 const fetchResultList = async () => {
   loading.value = true;
   try {
+    // 先检查用户认证状态
+    const authStore = useAuthStore();
+    if (!authStore.isAuthenticated) {
+      console.warn('用户未登录，尝试加载成绩列表');
+    }
+    
     // 根据标签和条件获取成绩列表
     let results = [];
     
@@ -361,9 +368,19 @@ const fetchResultList = async () => {
       recordTime: dayjs(result.createdAt).format('YYYY-MM-DD HH:mm:ss'),
       recorder: result.recordedBy?.username || '系统'
     }));
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取成绩列表失败', error);
-    ElMessage.error('获取成绩列表失败，请刷新重试');
+    
+    if (error.response && error.response.status === 401) {
+      ElMessage.error('登录已过期或您没有权限，请重新登录');
+      const authStore = useAuthStore();
+      authStore.logout();
+    } else {
+      ElMessage.error('获取成绩列表失败，请刷新重试');
+    }
+    
+    eventList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -454,13 +471,39 @@ const confirmDelete = async () => {
   
   deleting.value = true;
   try {
+    // 先检查用户认证状态
+    const authStore = useAuthStore();
+    if (!authStore.isAuthenticated || !authStore.isAdmin) {
+      ElMessage.error('您没有权限删除成绩或登录已过期，请重新登录');
+      authStore.logout();
+      return;
+    }
+
+    // 检查token是否有效
+    if (authStore.checkTokenExpiration(false)) {
+      ElMessage.error('登录已过期，请重新登录');
+      authStore.logout();
+      return;
+    }
+    
     await resultAPI.deleteResult(deleteTarget.value.id);
     ElMessage.success('成绩记录删除成功');
     deleteDialogVisible.value = false;
     fetchResultList(); // 刷新列表
-  } catch (error) {
+  } catch (error: any) {
     console.error('删除成绩记录失败', error);
-    ElMessage.error('删除成绩记录失败，请重试');
+    
+    if (error.response && error.response.status === 401) {
+      ElMessage.error('登录已过期或您没有权限，请重新登录');
+      const authStore = useAuthStore();
+      authStore.logout();
+    } else if (error.response && error.response.data && error.response.data.message) {
+      ElMessage.error(`删除成绩记录失败: ${error.response.data.message}`);
+    } else if (error.message) {
+      ElMessage.error(`删除成绩记录失败: ${error.message}`);
+    } else {
+      ElMessage.error('删除成绩记录失败，请重试');
+    }
   } finally {
     deleting.value = false;
   }
@@ -474,6 +517,21 @@ const submitResultForm = async () => {
     if (valid) {
       submitting.value = true;
       try {
+        // 先检查用户认证状态
+        const authStore = useAuthStore();
+        if (!authStore.isAuthenticated || !authStore.isAdmin) {
+          ElMessage.error('您没有权限录入成绩或登录已过期，请重新登录');
+          authStore.logout();
+          return;
+        }
+
+        // 检查token是否有效
+        if (authStore.checkTokenExpiration(false)) {
+          ElMessage.error('登录已过期，请重新登录');
+          authStore.logout();
+          return;
+        }
+        
         const resultData = {
           event: {
             id: resultForm.eventId as number
@@ -498,9 +556,20 @@ const submitResultForm = async () => {
         
         resultDialogVisible.value = false;
         fetchResultList(); // 刷新列表
-      } catch (error) {
+      } catch (error: any) {
         console.error('保存成绩失败', error);
-        ElMessage.error('保存成绩失败，请重试');
+        
+        if (error.response && error.response.status === 401) {
+          ElMessage.error('登录已过期或您没有权限，请重新登录');
+          const authStore = useAuthStore();
+          authStore.logout();
+        } else if (error.response && error.response.data && error.response.data.message) {
+          ElMessage.error(`保存成绩失败: ${error.response.data.message}`);
+        } else if (error.message) {
+          ElMessage.error(`保存成绩失败: ${error.message}`);
+        } else {
+          ElMessage.error('保存成绩失败，请重试');
+        }
       } finally {
         submitting.value = false;
       }

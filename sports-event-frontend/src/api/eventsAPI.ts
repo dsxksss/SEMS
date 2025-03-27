@@ -111,8 +111,13 @@ export const eventsAPI = {
       // 如果是401认证错误，尝试使用公共API获取基本信息
       if (error.response && error.response.status === 401) {
         console.warn('使用管理员API获取事件失败，尝试使用公共API');
-        const response = await apiClient.get<Event>(`/events/public/${id}`);
-        return response.data;
+        try {
+          const response = await apiClient.get<Event>(`/events/public/${id}`);
+          return response.data;
+        } catch (publicError) {
+          console.error('公共API获取事件也失败:', publicError);
+          throw publicError;
+        }
       }
       // 其他错误则继续抛出
       throw error;

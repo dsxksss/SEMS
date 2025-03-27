@@ -45,19 +45,22 @@
         :data="eventList"
         border
         style="width: 100%"
+        @sort-change="handleSortChange"
+        :default-sort="{ prop: 'id', order: 'descending' }"
+        empty-text="暂无赛事数据"
       >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="赛事名称" width="200" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" width="120" />
-        <el-table-column label="日期" width="220">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
+        <el-table-column prop="name" label="赛事名称" width="200" show-overflow-tooltip sortable="custom" />
+        <el-table-column prop="category" label="分类" width="120" sortable="custom" />
+        <el-table-column label="日期" width="220" sortable="custom" prop="startDate">
           <template #default="scope">
             {{ scope.row.startDate }} 至 {{ scope.row.endDate }}
           </template>
         </el-table-column>
         <el-table-column prop="location" label="地点" width="150" show-overflow-tooltip />
-        <el-table-column prop="registrationCount" label="报名人数" width="100" />
-        <el-table-column prop="maxParticipants" label="最大人数" width="100" />
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="registrationCount" label="报名人数" width="100" sortable="custom" />
+        <el-table-column prop="maxParticipants" label="最大人数" width="100" sortable="custom" />
+        <el-table-column prop="status" label="状态" width="120" sortable="custom">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
               {{ formatStatus(scope.row.status) }}
@@ -91,6 +94,7 @@
                   <el-dropdown-item v-if="scope.row.status === 'REGISTRATION' || scope.row.status === 'UPCOMING'" command="start-event">开始比赛</el-dropdown-item>
                   <el-dropdown-item v-if="scope.row.status === 'ONGOING'" command="end-event">结束比赛</el-dropdown-item>
                   <el-dropdown-item v-if="canCancel(scope.row)" command="cancel-event">取消赛事</el-dropdown-item>
+                  <el-dropdown-item divided command="view-details">查看详情</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -161,14 +165,16 @@
       :title="statusChangeTitle"
       v-model="statusDialogVisible"
       width="500px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="!statusChangeLoading"
     >
       <div class="status-change-content">
         <p>{{ statusChangeMessage }}</p>
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="statusDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmStatusChange">确认</el-button>
+          <el-button @click="statusDialogVisible = false" :disabled="statusChangeLoading">取消</el-button>
+          <el-button type="primary" @click="confirmStatusChange" :loading="statusChangeLoading">确认</el-button>
         </span>
       </template>
     </el-dialog>
@@ -178,6 +184,9 @@
       title="创建赛事"
       v-model="createDialogVisible"
       width="800px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="!submitting"
+      :before-close="(done) => submitting ? null : done()"
     >
       <div class="event-form-container">
         <el-form 
@@ -193,7 +202,12 @@
           </el-form-item>
           
           <el-form-item label="赛事分类" prop="categoryId">
-            <el-select v-model="eventForm.categoryId" placeholder="请选择赛事分类" style="width: 100%">
+            <el-select 
+              v-model="eventForm.categoryId" 
+              placeholder="请选择赛事分类" 
+              style="width: 100%"
+              :disabled="categories.length === 0"
+            >
               <el-option
                 v-for="category in categories"
                 :key="category.id"
@@ -201,6 +215,9 @@
                 :value="category.id"
               />
             </el-select>
+            <div v-if="categories.length === 0" class="el-form-item__error">
+              没有可用的赛事分类，请先创建分类
+            </div>
           </el-form-item>
           
           <el-form-item label="赛事日期" prop="eventDates">
@@ -210,6 +227,7 @@
               range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
               style="width: 100%"
             />
           </el-form-item>
@@ -221,6 +239,7 @@
               range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
               style="width: 100%"
             />
           </el-form-item>
@@ -230,7 +249,7 @@
           </el-form-item>
           
           <el-form-item label="主办方" prop="organizer">
-            <el-input v-model="eventForm.organizer" placeholder="请输入主办方" />
+            <el-input v-model="eventForm.organizer" placeholder="请输入主办方" clearable />
           </el-form-item>
           
           <el-form-item label="最大参与人数" prop="maxParticipants">
@@ -255,8 +274,8 @@
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="createDialogVisible = false">取消</el-button>
-          <el-button @click="resetEventForm">重置</el-button>
+          <el-button @click="cancelCreateDialog" :disabled="submitting">取消</el-button>
+          <el-button @click="resetEventForm" :disabled="submitting">重置</el-button>
           <el-button type="primary" @click="submitEventForm" :loading="submitting">创建赛事</el-button>
         </span>
       </template>
@@ -270,10 +289,13 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus';
 import { eventsAPI, categoryAPI } from '../../../api';
 import dayjs from 'dayjs';
+import { useAuthStore } from '../../../stores/auth';
 
 interface EventCategory {
   id: number;
   name: string;
+  description?: string;
+  isActive?: boolean;
 }
 
 interface Event {
@@ -371,10 +393,47 @@ const eventFormRules = reactive<FormRules>({
     { required: true, message: '请选择赛事分类', trigger: 'change' }
   ],
   eventDates: [
-    { required: true, message: '请选择赛事日期', trigger: 'change' }
+    { required: true, message: '请选择赛事日期', trigger: 'change' },
+    { 
+      validator: (rule, value, callback) => {
+        if (value && value.length === 2) {
+          const [start, end] = value;
+          if (dayjs(end).isBefore(dayjs(start))) {
+            callback(new Error('结束日期不能早于开始日期'));
+          } else {
+            callback();
+          }
+        } else {
+          callback();
+        }
+      }, 
+      trigger: 'change' 
+    }
   ],
   registrationDates: [
-    { required: true, message: '请选择报名时间', trigger: 'change' }
+    { required: true, message: '请选择报名时间', trigger: 'change' },
+    { 
+      validator: (rule, value, callback) => {
+        if (value && value.length === 2) {
+          const [start, end] = value;
+          if (dayjs(end).isBefore(dayjs(start))) {
+            callback(new Error('报名结束日期不能早于开始日期'));
+          } else if (eventForm.eventDates.length === 2) {
+            const eventStart = eventForm.eventDates[0];
+            if (dayjs(end).isAfter(dayjs(eventStart))) {
+              callback(new Error('报名截止日期应早于赛事开始日期'));
+            } else {
+              callback();
+            }
+          } else {
+            callback();
+          }
+        } else {
+          callback();
+        }
+      }, 
+      trigger: 'change' 
+    }
   ],
   location: [
     { required: true, message: '请输入比赛地点', trigger: 'blur' }
@@ -383,7 +442,19 @@ const eventFormRules = reactive<FormRules>({
     { required: true, message: '请输入主办方', trigger: 'blur' }
   ],
   maxParticipants: [
-    { required: true, message: '请输入最大参与人数', trigger: 'change' }
+    { required: true, message: '请输入最大参与人数', trigger: 'change' },
+    { 
+      validator: (rule, value, callback) => {
+        if (value < 1) {
+          callback(new Error('参与人数必须大于0'));
+        } else if (value > 10000) {
+          callback(new Error('参与人数不能超过10000'));
+        } else {
+          callback();
+        }
+      }, 
+      trigger: 'change' 
+    }
   ],
   description: [
     { required: true, message: '请输入赛事描述', trigger: 'blur' },
@@ -393,6 +464,22 @@ const eventFormRules = reactive<FormRules>({
 
 // 显示创建赛事弹窗
 const showCreateEventDialog = () => {
+  // 检查是否有可用的分类
+  if (categories.value.length === 0) {
+    ElMessageBox.confirm(
+      '没有可用的赛事分类，需要先创建分类才能创建赛事。是否前往分类管理页面？', 
+      '创建赛事', 
+      {
+        confirmButtonText: '前往分类管理',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      router.push('/admin/events/categories');
+    }).catch(() => {});
+    return;
+  }
+  
   resetEventForm();
   createDialogVisible.value = true;
 };
@@ -413,6 +500,23 @@ const resetEventForm = () => {
   }
 };
 
+// 取消创建弹窗
+const cancelCreateDialog = () => {
+  if (submitting) return;
+  
+  if (eventForm.name || eventForm.description || eventForm.location) {
+    ElMessageBox.confirm('确定要放弃当前编辑的内容吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }).then(() => {
+      createDialogVisible.value = false;
+    }).catch(() => {});
+  } else {
+    createDialogVisible.value = false;
+  }
+};
+
 // 提交创建赛事表单
 const submitEventForm = async () => {
   if (!eventFormRef.value) return;
@@ -421,23 +525,65 @@ const submitEventForm = async () => {
     if (valid) {
       submitting.value = true;
       try {
+        // 先检查用户认证状态
+        const authStore = useAuthStore();
+        if (!authStore.isAuthenticated || !authStore.isAdmin) {
+          ElMessage.error('您没有权限创建赛事或登录已过期，请重新登录');
+          authStore.logout();
+          return;
+        }
+
+        // 检查token是否有效
+        if (authStore.checkTokenExpiration(false)) {
+          ElMessage.error('登录已过期，请重新登录');
+          authStore.logout();
+          return;
+        }
+        
+        // 日期检查
+        if (!eventForm.eventDates || eventForm.eventDates.length !== 2) {
+          ElMessage.warning('请选择有效的赛事日期');
+          submitting.value = false;
+          return;
+        }
+        
+        if (!eventForm.registrationDates || eventForm.registrationDates.length !== 2) {
+          ElMessage.warning('请选择有效的报名时间');
+          submitting.value = false;
+          return;
+        }
+        
+        // 检查结束日期是否早于开始日期
+        if (dayjs(eventForm.eventDates[1]).isBefore(dayjs(eventForm.eventDates[0]))) {
+          ElMessage.warning('赛事结束日期不能早于开始日期');
+          submitting.value = false;
+          return;
+        }
+        
+        // 检查报名截止日期是否晚于赛事开始日期
+        if (dayjs(eventForm.registrationDates[1]).isAfter(dayjs(eventForm.eventDates[0]))) {
+          ElMessage.warning('报名截止日期应早于赛事开始日期');
+          submitting.value = false;
+          return;
+        }
+        
         // 处理日期
         const [startDate, endDate] = eventForm.eventDates;
         const [registrationStartDate, registrationEndDate] = eventForm.registrationDates;
 
         // 构建提交的数据
         const eventData = {
-          name: eventForm.name,
+          name: eventForm.name.trim(),
           category: {
             id: eventForm.categoryId
           },
-          startTime: dayjs(startDate).format('YYYY-MM-DD HH:mm:ss'),
-          endTime: dayjs(endDate).format('YYYY-MM-DD HH:mm:ss'),
-          registrationDeadline: dayjs(registrationEndDate).format('YYYY-MM-DD HH:mm:ss'),
-          location: eventForm.location,
-          organizer: eventForm.organizer,
+          startTime: `${startDate} 00:00:00`,
+          endTime: `${endDate} 23:59:59`,
+          registrationDeadline: `${registrationEndDate} 23:59:59`,
+          location: eventForm.location.trim(),
+          organizer: eventForm.organizer.trim() || '默认主办方', // 提供默认值
           maxParticipants: eventForm.maxParticipants,
-          description: eventForm.description,
+          description: eventForm.description.trim(),
           status: 'UPCOMING'  // 默认状态为未开始
         };
 
@@ -448,13 +594,25 @@ const submitEventForm = async () => {
         
         // 刷新赛事列表
         fetchEventList();
-      } catch (error) {
+      } catch (error: any) {
         console.error('创建赛事失败', error);
-        ElMessage.error('创建赛事失败，请重试');
+        
+        if (error.response && error.response.status === 401) {
+          ElMessage.error('登录已过期或您没有权限，请重新登录');
+          const authStore = useAuthStore();
+          authStore.logout();
+        } else if (error.response && error.response.data && error.response.data.message) {
+          ElMessage.error(`创建赛事失败: ${error.response.data.message}`);
+        } else if (error.message) {
+          ElMessage.error(`创建赛事失败: ${error.message}`);
+        } else {
+          ElMessage.error('创建赛事失败，请重试');
+        }
       } finally {
         submitting.value = false;
       }
     } else {
+      // 显示表单验证错误
       ElMessage.warning('请检查表单填写是否正确');
       return false;
     }
@@ -466,10 +624,18 @@ const loadCategories = async () => {
   try {
     // 调用API获取分类列表
     const response = await categoryAPI.getAllCategories();
-    categories.value = response;
+    const activeCategories = response.filter(category => category.isActive !== false);
+    
+    categories.value = activeCategories;
+    
+    // 如果没有分类，显示创建分类提示
+    if (activeCategories.length === 0) {
+      ElMessage.warning('没有可用的赛事分类，请先创建分类');
+    }
   } catch (error) {
     console.error('获取分类列表失败', error);
     ElMessage.error('获取分类列表失败');
+    categories.value = [];
   }
 };
 
@@ -487,7 +653,7 @@ const fetchEventList = async () => {
         matches = false;
       }
       
-      if (filterForm.categoryId && event.category.id !== filterForm.categoryId) {
+      if (filterForm.categoryId && event.category && event.category.id !== filterForm.categoryId) {
         matches = false;
       }
       
@@ -506,27 +672,52 @@ const fetchEventList = async () => {
     const endIndex = startIndex + pageSize.value;
     
     // 格式化数据
-    eventList.value = filteredEvents.slice(startIndex, endIndex).map(event => ({
-      id: event.id,
-      name: event.name,
-      category: event.category.name,
-      categoryId: event.category.id,
-      startDate: dayjs(event.startTime).format('YYYY-MM-DD'),
-      endDate: dayjs(event.endTime).format('YYYY-MM-DD'),
-      registrationStartDate: dayjs(event.registrationDeadline).subtract(14, 'day').format('YYYY-MM-DD'), // 假设报名开始时间为截止前14天
-      registrationEndDate: dayjs(event.registrationDeadline).format('YYYY-MM-DD'),
-      location: event.location,
-      organizer: '赛事组织者', // 假设API没有提供组织者信息
-      description: event.description,
-      registrationCount: 0, // 假设API没有提供报名数量信息
-      maxParticipants: event.maxParticipants,
-      status: event.status,
-      createdAt: dayjs(event.createdAt).format('YYYY-MM-DD HH:mm:ss'),
-      createdBy: 'admin' // 假设API没有提供创建者信息
-    }));
-  } catch (error) {
+    eventList.value = filteredEvents.slice(startIndex, endIndex).map(event => {
+      // 安全地获取分类名称
+      const categoryName = event.category && event.category.name ? event.category.name : '未分类';
+      const categoryId = event.category && event.category.id ? event.category.id : 0;
+      
+      // 安全处理日期
+      const startDate = event.startTime ? dayjs(event.startTime).format('YYYY-MM-DD') : '未设置';
+      const endDate = event.endTime ? dayjs(event.endTime).format('YYYY-MM-DD') : '未设置';
+      
+      // 生成报名日期 (截止日期前14天开始)
+      const registrationEndDate = event.registrationDeadline ? 
+        dayjs(event.registrationDeadline).format('YYYY-MM-DD') : 
+        dayjs(event.startTime).subtract(1, 'day').format('YYYY-MM-DD');
+      
+      const registrationStartDate = event.registrationDeadline ? 
+        dayjs(event.registrationDeadline).subtract(14, 'day').format('YYYY-MM-DD') : 
+        dayjs(event.startTime).subtract(15, 'day').format('YYYY-MM-DD');
+      
+      return {
+        id: event.id,
+        name: event.name || '未命名赛事',
+        category: categoryName,
+        categoryId: categoryId,
+        startDate: startDate,
+        endDate: endDate,
+        registrationStartDate: registrationStartDate,
+        registrationEndDate: registrationEndDate,
+        location: event.location || '未设置',
+        organizer: event.organizer || '赛事组织者',
+        description: event.description || '暂无描述',
+        registrationCount: event.currentParticipants || 0,
+        maxParticipants: event.maxParticipants || 0,
+        status: event.status || 'UNKNOWN',
+        createdAt: event.createdAt ? dayjs(event.createdAt).format('YYYY-MM-DD HH:mm:ss') : '未知',
+        createdBy: event.createdBy ? event.createdBy.username || '管理员' : '管理员'
+      };
+    });
+  } catch (error: any) {
     console.error('获取赛事列表失败', error);
-    ElMessage.error('获取赛事列表失败，请刷新重试');
+    if (error.response && error.response.status === 401) {
+      ElMessage.error('登录已过期，请重新登录');
+    } else {
+      ElMessage.error('获取赛事列表失败，请刷新重试');
+    }
+    eventList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -610,11 +801,16 @@ const handleChangeStatus = (row: Event, status: string) => {
   statusDialogVisible.value = true;
 };
 
+// 更新状态修改弹窗中的确认按钮状态
+const statusChangeLoading = ref(false);
+
 // 确认修改状态
 const confirmStatusChange = async () => {
   if (!statusChangeEvent.value) return;
   
   try {
+    statusChangeLoading.value = true;
+    
     // 根据不同的状态调用不同的API
     if (targetStatus.value === 'CANCELLED') {
       // 取消赛事
@@ -629,9 +825,18 @@ const confirmStatusChange = async () => {
     
     // 刷新列表
     fetchEventList();
-  } catch (error) {
+  } catch (error: any) {
     console.error('更新赛事状态失败', error);
-    ElMessage.error('更新赛事状态失败，请重试');
+    
+    if (error.response && error.response.data && error.response.data.message) {
+      ElMessage.error(`更新赛事状态失败: ${error.response.data.message}`);
+    } else if (error.message) {
+      ElMessage.error(`更新赛事状态失败: ${error.message}`);
+    } else {
+      ElMessage.error('更新赛事状态失败，请重试');
+    }
+  } finally {
+    statusChangeLoading.value = false;
   }
 };
 
@@ -668,8 +873,67 @@ const handleCommand = (command: string, row: Event) => {
       handleChangeStatus(row, 'COMPLETED');
       break;
     case 'cancel-event':
-      handleChangeStatus(row, 'CANCELLED');
+      ElMessageBox.confirm('取消赛事后无法恢复，确定要取消吗？', '确认操作', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        handleChangeStatus(row, 'CANCELLED');
+      }).catch(() => {});
       break;
+    case 'view-details':
+      handleView(row);
+      break;
+  }
+};
+
+// 处理表格排序
+const handleSortChange = (column: { prop: string; order: string }) => {
+  if (!column.prop || !column.order) return;
+  
+  // 根据排序规则对本地数据进行排序
+  eventList.value.sort((a: any, b: any) => {
+    // 对于日期类型的字段，转换为时间戳进行比较
+    if (['startDate', 'endDate', 'createdAt', 'registrationStartDate', 'registrationEndDate'].includes(column.prop)) {
+      const aTime = a[column.prop] ? dayjs(a[column.prop]).valueOf() : 0;
+      const bTime = b[column.prop] ? dayjs(b[column.prop]).valueOf() : 0;
+      
+      return column.order === 'ascending' ? aTime - bTime : bTime - aTime;
+    }
+    
+    // 对于数字类型的字段
+    if (['id', 'registrationCount', 'maxParticipants'].includes(column.prop)) {
+      const aValue = a[column.prop] || 0;
+      const bValue = b[column.prop] || 0;
+      
+      return column.order === 'ascending' ? aValue - bValue : bValue - aValue;
+    }
+    
+    // 对于字符串类型的字段
+    const aValue = a[column.prop] || '';
+    const bValue = b[column.prop] || '';
+    
+    return column.order === 'ascending' 
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
+  });
+};
+
+// 禁用状态下拉菜单中无法使用的选项
+const isActionDisabled = (status: string, targetAction: string) => {
+  switch (targetAction) {
+    case 'start-registration':
+      return status !== 'UPCOMING';
+    case 'end-registration':
+      return status !== 'REGISTRATION';
+    case 'start-event':
+      return !['UPCOMING', 'REGISTRATION'].includes(status);
+    case 'end-event':
+      return status !== 'ONGOING';
+    case 'cancel-event':
+      return !['UPCOMING', 'REGISTRATION'].includes(status);
+    default:
+      return false;
   }
 };
 
@@ -757,5 +1021,88 @@ onMounted(() => {
 
 .event-form {
   max-width: 100%;
+}
+
+/* 修复按钮样式问题 */
+:deep(.el-button.is-disabled) {
+  background-color: #f5f7fa !important;
+  border-color: #e4e7ed !important;
+  color: #c0c4cc !important;
+  opacity: 1 !important;
+}
+
+:deep(.el-button--primary.is-disabled) {
+  background-color: #a0cfff !important;
+  border-color: #a0cfff !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-button--success.is-disabled) {
+  background-color: #b3e19d !important;
+  border-color: #b3e19d !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-button--info.is-disabled) {
+  background-color: #c8c9cc !important;
+  border-color: #c8c9cc !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-button--warning.is-disabled) {
+  background-color: #f3d19e !important;
+  border-color: #f3d19e !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-button--danger.is-disabled) {
+  background-color: #fab6b6 !important;
+  border-color: #fab6b6 !important;
+  color: #ffffff !important;
+}
+
+/* 修复下拉按钮样式 */
+:deep(.el-dropdown__popper .el-dropdown-menu__item.is-disabled) {
+  color: #c0c4cc !important;
+  cursor: not-allowed;
+}
+
+/* 改进表单样式 */
+.event-form-container {
+  padding: 20px 0;
+}
+
+.event-form {
+  max-width: 100%;
+}
+
+:deep(.el-form-item__error) {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+/* 点击禁用的下拉项时的样式 */
+:deep(.el-dropdown-menu__item.is-disabled) {
+  pointer-events: none !important;
+}
+
+/* 修复按钮嵌套问题 */
+:deep(.el-dropdown .el-button-group .el-button--info) {
+  background-color: #909399;
+  border-color: #909399;
+  color: #ffffff;
+}
+
+:deep(.el-dropdown .el-button-group .el-button--info:hover) {
+  background-color: #a6a9ad;
+  border-color: #a6a9ad;
+  color: #ffffff;
+}
+
+:deep(.el-dropdown .el-button-group .el-button--info.is-disabled) {
+  background-color: #c8c9cc !important;
+  border-color: #c8c9cc !important;
+  color: #ffffff !important;
 }
 </style> 
