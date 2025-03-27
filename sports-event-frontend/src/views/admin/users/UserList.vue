@@ -7,10 +7,12 @@
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="filterForm.role" placeholder="选择角色" clearable class="filter-select">
-            <el-option label="管理员" value="ROLE_ADMIN" />
-            <el-option label="普通用户" value="ROLE_USER" />
-            <el-option label="运动员" value="ROLE_ATHLETE" />
-            <el-option label="观众" value="ROLE_SPECTATOR" />
+            <el-option 
+              v-for="role in roleList" 
+              :key="role.id" 
+              :label="role.displayName || formatRoleName(role.name)" 
+              :value="role.name" 
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -125,11 +127,13 @@
           />
         </el-form-item>
         <el-form-item label="角色" prop="roles">
-          <el-checkbox-group v-model="userForm.roles" id="roles">
-            <el-checkbox label="ROLE_ADMIN">管理员</el-checkbox>
-            <el-checkbox label="ROLE_USER">普通用户</el-checkbox>
-            <el-checkbox label="ROLE_ATHLETE">运动员</el-checkbox>
-            <el-checkbox label="ROLE_SPECTATOR">观众</el-checkbox>
+          <div v-if="loadingRoles" class="loading-roles">
+            <el-icon class="is-loading"><Loading /></el-icon> 加载角色中...
+          </div>
+          <el-checkbox-group v-else v-model="userForm.roles" id="roles">
+            <el-checkbox v-for="role in roleList" :key="role.id" :label="role.name">
+              {{ role.displayName || formatRoleName(role.name) }}
+            </el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -154,6 +158,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { userAPI } from '../../../api/userAPI';
 import type { User } from '../../../api/authAPI';
+import { roleAPI, type Role as RoleType } from '../../../api/roleAPI';
 import dayjs from 'dayjs';
 
 // 扩展User类型，添加status和createdAt字段
@@ -176,6 +181,10 @@ const loading = ref(false);
 const total = ref(0);
 const pageSize = ref(10);
 const currentPage = ref(1);
+
+// 角色列表数据
+const roleList = ref<RoleType[]>([]);
+const loadingRoles = ref(false);
 
 // 对话框相关
 const dialogVisible = ref(false);
@@ -204,7 +213,22 @@ const userRules = {
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
   ],
-  roles: [{ type: 'array', required: true, message: '请至少选择一个角色', trigger: 'change' }]
+  roles: [{ type: 'array', required: dialogType.value === 'add', message: '请至少选择一个角色', trigger: 'change' }]
+};
+
+// 加载所有角色
+const fetchAllRoles = async () => {
+  loadingRoles.value = true;
+  try {
+    const roles = await roleAPI.getAllRoles();
+    roleList.value = roles;
+    console.log('获取到的角色列表:', roles);
+  } catch (error) {
+    console.error('获取角色列表失败', error);
+    ElMessage.error('获取角色列表失败，可能影响用户编辑功能');
+  } finally {
+    loadingRoles.value = false;
+  }
 };
 
 // 获取用户列表
@@ -215,10 +239,21 @@ const fetchUserList = async () => {
     const response = await userAPI.getAllUsers();
     
     // 处理数据，将后端的enabled映射为前端的status
-    const processedUsers = response.map(user => ({
-      ...user,
-      status: user.enabled ? 'active' : 'disabled'
-    }));
+    const processedUsers = response.map(user => {
+      // 统一角色格式为字符串数组
+      const roles = user.roles.map(role => {
+        if (typeof role === 'object' && role !== null && role.name) {
+          return role.name;
+        }
+        return role as string;
+      });
+      
+      return {
+        ...user,
+        roles,
+        status: user.enabled ? 'active' : 'disabled'
+      };
+    });
     
     // 处理筛选
     let filteredUsers = processedUsers.filter(user => {
@@ -231,9 +266,8 @@ const fetchUserList = async () => {
       // 角色筛选
       if (filterForm.role) {
         const hasRole = user.roles.some(role => {
-          // 处理角色对象
-          const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
-          return roleName === filterForm.role;
+          // 使用完全匹配，因为角色值可能是完整的ROLE_XX格式
+          return role === filterForm.role;
         });
         
         if (!hasRole) {
@@ -294,9 +328,20 @@ const handleEdit = (row: ExtendedUser) => {
   userForm.username = row.username;
   userForm.email = row.email;
   userForm.password = '';
-  userForm.roles = row.roles;
+  
+  // 将角色转换为字符串数组
+  userForm.roles = row.roles.map(role => {
+    if (typeof role === 'object' && role !== null && role.name) {
+      return role.name;
+    }
+    return role as string;
+  });
+  
   userForm.status = row.status;
   dialogVisible.value = true;
+  
+  // 打印角色信息用于调试
+  console.log('编辑用户角色:', userForm.roles);
 };
 
 // 启用/禁用用户
@@ -363,6 +408,15 @@ const saveUser = async () => {
   // userFormRef.value需要类型断言或可选链调用
   const formEl = userFormRef.value as any;
   if (!formEl) return;
+  
+  // 在保存前打印当前表单数据，便于调试
+  console.log('准备保存用户表单，当前数据:', {
+    id: userForm.id,
+    username: userForm.username,
+    email: userForm.email,
+    roles: userForm.roles,
+    status: userForm.status
+  });
   
   await formEl.validate(async (valid: boolean) => {
     if (valid) {
@@ -442,11 +496,18 @@ const getRoleTagType = (role: any) => {
   }
 };
 
-// 格式化角色名称
+// 格式化角色名称 - 修改为使用roleList的数据
 const formatRoleName = (role: any) => {
   // 如果role是对象，则获取name属性
   const roleName = typeof role === 'object' && role !== null && role.name ? role.name : role;
   
+  // 从roleList中查找对应的角色
+  const foundRole = roleList.value.find(r => r.name === roleName);
+  if (foundRole && foundRole.displayName) {
+    return foundRole.displayName;
+  }
+  
+  // 如果没找到，使用默认的显示逻辑
   switch (roleName) {
     case 'ROLE_ADMIN':
       return '管理员';
@@ -457,7 +518,8 @@ const formatRoleName = (role: any) => {
     case 'ROLE_SPECTATOR':
       return '观众';
     default:
-      return roleName;
+      // 移除ROLE_前缀用于显示
+      return roleName.replace('ROLE_', '');
   }
 };
 
@@ -475,6 +537,7 @@ const handleCurrentChange = (page: number) => {
 // 初始化加载
 onMounted(() => {
   fetchUserList();
+  fetchAllRoles();
 });
 </script>
 
@@ -533,5 +596,12 @@ onMounted(() => {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+.loading-roles {
+  color: #909399;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 </style> 

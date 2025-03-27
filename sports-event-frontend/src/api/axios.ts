@@ -1,5 +1,8 @@
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
+import { ElMessage } from 'element-plus';
 
+// 创建axios实例
 const apiClient = axios.create({
   baseURL: '/api',
   headers: {
@@ -11,6 +14,7 @@ const apiClient = axios.create({
 // 请求拦截器 - 为所有请求添加认证头
 apiClient.interceptors.request.use(
   (config) => {
+    // 从localStorage获取token，这样可以确保总是使用最新的token
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -32,7 +36,7 @@ apiClient.interceptors.response.use(
     console.log(`响应成功: ${response.config.method?.toUpperCase()} ${response.config.url}`);
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.response) {
       const { status } = error.response;
       const url = error.config.url || '';
@@ -44,18 +48,72 @@ apiClient.interceptors.response.use(
         console.error('请求URL:', error.config.url);
         console.error('请求方法:', error.config.method);
         
-        // 特殊处理角色管理相关API - 不自动退出登录
-        if (url.includes('/roles')) {
-          console.warn('角色管理API返回401，不执行自动退出');
+        // 检查是否是登录请求，如果是登录请求返回401，不执行退出操作
+        if (url.includes('/auth/signin')) {
+          console.warn('登录请求返回401，可能是用户名或密码错误');
           return Promise.reject(error);
         }
         
-        // 保存当前URL作为重定向目标
-        const currentPath = window.location.pathname;
-        console.log('当前路径:', currentPath);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        // 对于角色相关API，由角色API自己处理，不在这里自动登出
+        if (url.includes('/roles')) {
+          console.warn('角色API请求返回401，将由roleAPI模块处理');
+          
+          // 检查token是否已经过期
+          const authStore = useAuthStore();
+          if (authStore && authStore.checkTokenExpiration()) {
+            console.warn('Token已过期，需要重新登录');
+            ElMessage.error('您的登录已过期，请重新登录');
+            
+            // 延迟执行登出操作，让用户看到提示信息
+            setTimeout(() => {
+              authStore.logout();
+            }, 1500);
+          }
+          
+          return Promise.reject(error);
+        }
+        
+        // 判断是否需要尝试自动刷新token
+        const tryRefreshToken = !url.includes('/auth/refresh');
+        
+        if (tryRefreshToken) {
+          try {
+            console.log('尝试刷新token...');
+            
+            // 这里可以添加刷新token的逻辑
+            // const refreshResponse = await apiClient.post('/auth/refresh');
+            // if (refreshResponse.data && refreshResponse.data.token) {
+            //   localStorage.setItem('token', refreshResponse.data.token);
+            //   console.log('token刷新成功');
+            //   
+            //   // 重新发送之前的请求
+            //   error.config.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
+            //   return apiClient(error.config);
+            // }
+            
+            // 如果后端暂不支持刷新token，直接进入catch块
+            throw new Error('刷新token失败');
+          } catch (refreshError) {
+            console.error('刷新token失败，需要重新登录:', refreshError);
+            // 清除认证信息
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // 使用Pinia store的logout方法
+            const authStore = useAuthStore();
+            if (authStore) {
+              authStore.logout();
+            } else {
+              // 如果store不可用，直接重定向
+              window.location.href = '/login';
+            }
+            
+            return Promise.reject(error);
+          }
+        } else {
+          console.warn('刷新token请求失败，不执行自动退出');
+          return Promise.reject(error);
+        }
       }
       
       // 处理其他错误

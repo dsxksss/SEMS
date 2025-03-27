@@ -136,20 +136,24 @@ export const userAPI = {
     // 处理角色数据，如果存在则转换格式
     let updateData = {...userData};
     
-    if (userData.roles) {
+    if (userData.roles && userData.roles.length > 0) {
       // 将字符串角色名称转换为Role对象格式
       updateData.roles = userData.roles.map(role => {
         // 如果已经是对象格式就保留
         if (typeof role === 'object' && role !== null && 'name' in role) {
           return role;
         }
-        // 否则转换为对象格式，确保使用ERole枚举格式
+        // 否则转换为对象格式
         return {
           name: role as string
         };
       });
       
       console.log('转换后的角色数据:', updateData.roles);
+    } else if (userData.roles && userData.roles.length === 0) {
+      // 如果是空数组，需要明确设置为空，便于后端清除所有角色
+      updateData.roles = [];
+      console.log('用户角色将被清空');
     }
     
     // 将前端的status转换为后端的enabled

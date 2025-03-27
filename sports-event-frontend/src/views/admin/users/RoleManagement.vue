@@ -3,7 +3,6 @@
     <div class="main-container">
       <div class="header">
         <h3>角色管理</h3>
-        <el-button type="primary" @click="resetForm">添加角色</el-button>
       </div>
 
       <el-table
@@ -13,10 +12,29 @@
         style="width: 100%"
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="角色标识" width="180" />
-        <el-table-column prop="displayName" label="角色名称" width="180" />
+        <el-table-column prop="name" label="角色标识" width="180">
+          <template #default="scope">
+            {{ scope.row.name }}
+            <el-tag v-if="isCustomRole(scope.row)" size="small" type="warning" effect="plain">自定义</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="displayName" label="角色名称" width="180">
+          <template #default="scope">
+            {{ scope.row.displayName || getDisplayNameForRole(scope.row.name) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="描述" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
+        <el-table-column label="系统角色" width="100">
+          <template #default="scope">
+            <el-tag v-if="scope.row.isSystem" type="info">是</el-tag>
+            <el-tag v-else type="success">否</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" width="180">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button
@@ -24,22 +42,16 @@
               type="primary"
               @click="handleEdit(scope.row)"
               >编辑</el-button>
-            <el-button
-              size="small"
-              type="danger"
-              :disabled="isSystemRole(scope.row)"
-              @click="handleDelete(scope.row)"
-              >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </div>
 
-    <!-- 添加/编辑角色对话框 -->
+    <!-- 编辑角色对话框 -->
     <el-dialog
-      :title="isEdit ? '编辑角色' : '添加角色'"
+      title="编辑角色"
       v-model="dialogVisible"
-      width="500px"
+      width="600px"
       @closed="handleDialogClose"
     >
       <el-form
@@ -51,12 +63,11 @@
         <el-form-item label="角色标识" prop="name">
           <el-input 
             v-model="roleForm.name" 
-            placeholder="请输入角色标识，如ROLE_CUSTOM" 
-            :disabled="isEdit && isSystemRole(roleForm)"
+            disabled
           />
         </el-form-item>
         <el-form-item label="角色名称" prop="displayName">
-          <el-input v-model="roleForm.displayName" placeholder="请输入角色名称，如自定义角色" />
+          <el-input v-model="roleForm.displayName" placeholder="请输入角色名称" :disabled="isSystemRole(roleForm)" />
         </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input
@@ -64,46 +75,36 @@
             type="textarea"
             placeholder="请输入角色描述"
             rows="3"
+            :disabled="isSystemRole(roleForm)"
           />
         </el-form-item>
+        
+        <!-- 权限选择 -->
         <el-form-item label="权限" prop="permissions">
-          <el-checkbox-group v-model="roleForm.permissions">
-            <div class="permission-group">
-              <div class="group-title">用户管理</div>
-              <div class="group-content">
-                <el-checkbox label="user:view">查看用户</el-checkbox>
-                <el-checkbox label="user:create">创建用户</el-checkbox>
-                <el-checkbox label="user:edit">编辑用户</el-checkbox>
-                <el-checkbox label="user:delete">删除用户</el-checkbox>
+          <div v-if="permissionsLoading" class="permissions-loading">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span>加载权限中...</span>
+          </div>
+          <div v-else>
+            <div v-if="permissionGroups.length === 0" class="no-permissions">
+              暂无可用权限
+            </div>
+            <div v-else class="permissions-container">
+              <div v-for="(group, index) in permissionGroups" :key="index" class="permission-group">
+                <div class="group-title">{{ group.title }}</div>
+                <div class="group-content">
+                  <el-checkbox
+                    v-for="perm in group.permissions"
+                    :key="perm.key"
+                    v-model="roleForm.permissions"
+                    :label="perm.key"
+                  >
+                    {{ perm.label }}
+                  </el-checkbox>
+                </div>
               </div>
             </div>
-            <div class="permission-group">
-              <div class="group-title">赛事管理</div>
-              <div class="group-content">
-                <el-checkbox label="event:view">查看赛事</el-checkbox>
-                <el-checkbox label="event:create">创建赛事</el-checkbox>
-                <el-checkbox label="event:edit">编辑赛事</el-checkbox>
-                <el-checkbox label="event:delete">删除赛事</el-checkbox>
-              </div>
-            </div>
-            <div class="permission-group">
-              <div class="group-title">报名管理</div>
-              <div class="group-content">
-                <el-checkbox label="registration:view">查看报名</el-checkbox>
-                <el-checkbox label="registration:approve">审核报名</el-checkbox>
-                <el-checkbox label="registration:cancel">取消报名</el-checkbox>
-              </div>
-            </div>
-            <div class="permission-group">
-              <div class="group-title">公告管理</div>
-              <div class="group-content">
-                <el-checkbox label="announcement:view">查看公告</el-checkbox>
-                <el-checkbox label="announcement:create">创建公告</el-checkbox>
-                <el-checkbox label="announcement:edit">编辑公告</el-checkbox>
-                <el-checkbox label="announcement:delete">删除公告</el-checkbox>
-              </div>
-            </div>
-          </el-checkbox-group>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -117,10 +118,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref, reactive, onMounted, computed } from 'vue';
+import { ElMessage, ElLoading } from 'element-plus';
 import { roleAPI } from '../../../api';
 import type { Role } from '../../../api/roleAPI';
+import { ERole } from '../../../api/types';
+import dayjs from 'dayjs';
+import { Loading } from '@element-plus/icons-vue';
+import { useAuthStore } from '../../../stores/auth';
+import { getDisplayNameForRole } from '../../../api/roleAPI';
 
 // 角色列表数据
 const roleList = ref<Role[]>([]);
@@ -128,7 +134,7 @@ const loading = ref(false);
 
 // 对话框相关
 const dialogVisible = ref(false);
-const isEdit = ref(false);
+const isEdit = ref(true); // 始终处于编辑模式
 const roleFormRef = ref(null);
 const roleForm = reactive<Role>({
   id: 0,
@@ -139,18 +145,85 @@ const roleForm = reactive<Role>({
   createdAt: ''
 });
 
+// 权限相关
+const permissionsLoading = ref(false);
+const allPermissions = ref<string[]>([]);
+const permissionGroups = ref<{ title: string; permissions: { key: string; label: string; available: boolean }[] }[]>([]);
+
+// 判断是否为自定义角色
+const isCustomRole = (role: Role) => {
+  return !Object.values(ERole).includes(role.name as ERole);
+};
+
 // 表单验证规则
 const roleRules = {
-  name: [
-    { required: true, message: '请输入角色标识', trigger: 'blur' },
-    { pattern: /^ROLE_[A-Z_]+$/, message: '角色标识必须以ROLE_开头，并且只能包含大写字母和下划线', trigger: 'blur' }
-  ],
   displayName: [
     { required: true, message: '请输入角色名称', trigger: 'blur' }
-  ],
-  permissions: [
-    { type: 'array', required: true, message: '请至少选择一个权限', trigger: 'change' }
   ]
+};
+
+// 格式化日期时间
+const formatDateTime = (dateTime?: string) => {
+  if (!dateTime) return '-';
+  return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
+};
+
+// 获取权限组的中文标题
+const getPermissionGroupTitle = (key: string) => {
+  // 将英文权限组名转换为中文
+  const groupTitleMap: Record<string, string> = {
+    'user': '用户',
+    'role': '角色',
+    'event': '赛事',
+    'category': '分类',
+    'registration': '报名',
+    'result': '成绩',
+    'announcement': '公告',
+    'statistics': '统计',
+    'file': '文件'
+  };
+  
+  return groupTitleMap[key.toLowerCase()] || key;
+};
+
+// 获取所有权限
+const fetchAllPermissions = async () => {
+  permissionsLoading.value = true;
+  try {
+    const permissions = await roleAPI.getAllPermissions();
+    allPermissions.value = permissions || [];
+    
+    // 对权限进行分组
+    const groups: Record<string, { key: string; label: string; available: boolean }[]> = {};
+    
+    allPermissions.value.forEach(perm => {
+      const parts = perm.split(':');
+      const group = parts[0] || '其他';
+      const label = parts.length > 1 ? parts.slice(1).join(':') : perm;
+      
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      
+      groups[group].push({
+        key: perm,
+        label: label,
+        available: true
+      });
+    });
+    
+    // 转换为组件需要的格式
+    permissionGroups.value = Object.keys(groups).map(key => ({
+      title: getPermissionGroupTitle(key),
+      permissions: groups[key]
+    }));
+    
+  } catch (error) {
+    console.error('获取权限列表失败', error);
+    ElMessage.error('获取权限列表失败，请稍后重试');
+  } finally {
+    permissionsLoading.value = false;
+  }
 };
 
 // 获取角色列表
@@ -169,48 +242,29 @@ const fetchRoleList = async () => {
 };
 
 // 编辑角色
-const handleEdit = (row: Role) => {
-  isEdit.value = true;
-  Object.assign(roleForm, row);
-  dialogVisible.value = true;
+const handleEdit = async (row: Role) => {
+  try {
+    // 获取角色详情，包括权限
+    const roleDetail = await roleAPI.getRoleById(row.id);
+    Object.assign(roleForm, roleDetail);
+    
+    // 如果没有权限数组，初始化为空数组
+    if (!roleForm.permissions) {
+      roleForm.permissions = [];
+    }
+    
+    dialogVisible.value = true;
+  } catch (error) {
+    console.error('获取角色详情失败', error);
+    ElMessage.error('获取角色详情失败，请稍后重试');
+  }
 };
 
 // 判断是否为系统内置角色
 const isSystemRole = (role: Role) => {
-  return role.isSystem === true;
-};
-
-// 删除角色
-const handleDelete = (row: Role) => {
-  if (isSystemRole(row)) {
-    ElMessage.warning('系统内置角色不能删除');
-    return;
-  }
-  
-  ElMessageBox.confirm(
-    `确认要删除角色 "${row.displayName}" 吗？此操作不可恢复！`,
-    '确认删除',
-    {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  )
-    .then(async () => {
-      try {
-        // 调用API删除角色
-        await roleAPI.deleteRole(row.id);
-        
-        ElMessage.success('删除角色成功');
-        fetchRoleList(); // 重新获取角色列表
-      } catch (error) {
-        console.error('删除角色失败', error);
-        ElMessage.error('删除角色失败，请重试');
-      }
-    })
-    .catch(() => {
-      // 用户取消删除操作
-    });
+  // 管理员和预设核心角色无法修改角色信息，但可以修改权限
+  const coreRoles = [ERole.ROLE_ADMIN, ERole.ROLE_ATHLETE, ERole.ROLE_SPECTATOR, ERole.ROLE_USER];
+  return role && role.name && coreRoles.includes(role.name as ERole);
 };
 
 // 保存角色
@@ -221,30 +275,82 @@ const saveRole = async () => {
   await formEl.validate(async (valid: boolean) => {
     if (valid) {
       try {
-        if (isEdit.value) {
-          // 编辑角色
-          await roleAPI.updateRole(roleForm.id, {
-            name: roleForm.name,
-            displayName: roleForm.displayName,
-            description: roleForm.description,
-            permissions: roleForm.permissions
-          });
+        // 显示加载中状态
+        const loadingInstance = ElLoading.service({
+          lock: true,
+          text: '正在更新角色...',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
+        
+        try {
+          // 确保displayName有值
+          if (!roleForm.displayName && !isSystemRole(roleForm)) {
+            // 对于非系统角色，如果未提供，使用内置的显示名称
+            roleForm.displayName = getDisplayNameForRole(roleForm.name as string);
+          }
+          
+          console.log('准备保存角色:', roleForm);
+          
+          // 对于系统角色，只更新权限
+          if (isSystemRole(roleForm)) {
+            console.log('更新系统角色，只处理权限:', roleForm.permissions);
+            
+            // 更新角色基本信息，名称和描述对系统角色不可修改
+            await roleAPI.updateRole(roleForm.id, {
+              permissions: roleForm.permissions
+            });
+          } else {
+            // 对于非系统角色，可以更新所有字段
+            await roleAPI.updateRole(roleForm.id, {
+              name: roleForm.name,
+              displayName: roleForm.displayName,
+              description: roleForm.description,
+              permissions: roleForm.permissions
+            });
+          }
+          
           ElMessage.success('更新角色成功');
-        } else {
-          // 添加角色
-          await roleAPI.createRole({
-            name: roleForm.name,
-            displayName: roleForm.displayName,
-            description: roleForm.description,
-            permissions: roleForm.permissions
-          });
-          ElMessage.success('添加角色成功');
+          dialogVisible.value = false;
+          fetchRoleList(); // 刷新角色列表
+        } catch (error: any) {
+          console.error('保存角色失败', error);
+          
+          // 错误处理逻辑
+          let errorMessage = '保存角色失败，请重试';
+          
+          // 检查是否是401错误
+          if (error.response && error.response.status === 401) {
+            errorMessage = '您的登录会话已过期，请重新登录';
+            
+            // 检查token是否已经过期
+            const authStore = useAuthStore();
+            if (authStore && authStore.checkTokenExpiration()) {
+              // 延迟执行登出操作，让用户看到提示信息
+              setTimeout(() => {
+                authStore.logout();
+              }, 1500);
+            }
+          } 
+          // 检查是否是400错误(请求错误)
+          else if (error.response && error.response.status === 400) {
+            if (error.response.data && error.response.data.message) {
+              // 直接使用服务器返回的错误消息
+              errorMessage = error.response.data.message;
+            }
+          }
+          // 其他错误
+          else if (error.response && error.response.data && error.response.data.message) {
+            // 服务器返回的具体错误信息
+            errorMessage = error.response.data.message;
+          }
+          
+          ElMessage.error(errorMessage);
+        } finally {
+          // 关闭加载中状态
+          loadingInstance.close();
         }
-        dialogVisible.value = false;
-        fetchRoleList(); // 刷新角色列表
-      } catch (error) {
-        console.error('保存角色失败', error);
-        ElMessage.error('保存角色失败，请重试');
+      } catch (e) {
+        ElMessage.error('界面出错，请重试');
       }
     } else {
       return false;
@@ -252,20 +358,8 @@ const saveRole = async () => {
   });
 };
 
-// 重置表单
-const resetForm = () => {
-  isEdit.value = false;
-  roleForm.id = 0;
-  roleForm.name = '';
-  roleForm.displayName = '';
-  roleForm.description = '';
-  roleForm.permissions = [];
-  dialogVisible.value = true;
-};
-
 // 监听对话框关闭事件，重置表单
 const handleDialogClose = () => {
-  isEdit.value = false;
   if (roleFormRef.value) {
     (roleFormRef.value as any).resetFields();
   }
@@ -274,6 +368,7 @@ const handleDialogClose = () => {
 // 初始化加载
 onMounted(() => {
   fetchRoleList();
+  fetchAllPermissions();
 });
 </script>
 
@@ -301,10 +396,16 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.permission-group {
-  margin-bottom: 15px;
+.permissions-container {
+  max-height: 300px;
+  overflow-y: auto;
   border: 1px solid #ebeef5;
   border-radius: 4px;
+}
+
+.permission-group {
+  margin-bottom: 15px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .group-title {
@@ -312,7 +413,6 @@ onMounted(() => {
   padding: 8px 15px;
   font-weight: 500;
   color: #606266;
-  border-bottom: 1px solid #ebeef5;
 }
 
 .group-content {
@@ -324,6 +424,20 @@ onMounted(() => {
 .group-content .el-checkbox {
   margin-right: 15px;
   margin-bottom: 5px;
+}
+
+.permissions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #909399;
+}
+
+.no-permissions {
+  text-align: center;
+  padding: 20px;
+  color: #909399;
 }
 
 .dialog-footer {

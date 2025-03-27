@@ -69,48 +69,47 @@ public class UserController {
                     }
                     
                     // 处理角色更新
-                    if (userDetails.getRoles() != null && !userDetails.getRoles().isEmpty()) {
+                    if (userDetails.getRoles() != null) {
                         Set<Role> roles = new HashSet<>();
                         
                         System.out.println("收到的角色数据: " + userDetails.getRoles());
                         
-                        // 遍历前端传来的角色列表
-                        for (Role role : userDetails.getRoles()) {
-                            System.out.println("处理角色: " + role);
-                            
-                            // 如果角色对象有name属性，通过name查找对应的角色
-                            if (role.getName() != null) {
-                                System.out.println("通过角色名查找: " + role.getName());
-                                // 查找数据库中对应的角色
-                                Optional<Role> dbRole = roleRepository.findByName(role.getName());
-                                if (dbRole.isPresent()) {
-                                    System.out.println("找到角色: " + dbRole.get().getName());
-                                    roles.add(dbRole.get());
-                                } else {
-                                    System.out.println("未找到角色: " + role.getName());
-                                }
-                            } else if (role.getId() != null) {
-                                System.out.println("通过角色ID查找: " + role.getId());
-                                // 如果角色对象有ID，通过ID查找
-                                Optional<Role> dbRole = roleRepository.findById(role.getId());
-                                if (dbRole.isPresent()) {
-                                    System.out.println("找到角色: " + dbRole.get().getName());
-                                    roles.add(dbRole.get());
-                                } else {
-                                    System.out.println("未找到角色ID: " + role.getId());
+                        // 如果角色列表不为空，处理角色更新
+                        if (!userDetails.getRoles().isEmpty()) {
+                            // 遍历前端传来的角色列表
+                            for (Role role : userDetails.getRoles()) {
+                                System.out.println("处理角色: " + role);
+                                
+                                // 如果角色对象有name属性，通过name查找对应的角色
+                                if (role.getName() != null) {
+                                    System.out.println("通过角色名查找: " + role.getName());
+                                    // 查找数据库中对应的角色
+                                    Optional<Role> dbRole = roleRepository.findByName(role.getName());
+                                    if (dbRole.isPresent()) {
+                                        System.out.println("找到角色: " + dbRole.get().getName());
+                                        roles.add(dbRole.get());
+                                    } else {
+                                        System.out.println("未找到角色: " + role.getName());
+                                    }
+                                } else if (role.getId() != null) {
+                                    System.out.println("通过角色ID查找: " + role.getId());
+                                    // 如果角色对象有ID，通过ID查找
+                                    Optional<Role> dbRole = roleRepository.findById(role.getId());
+                                    if (dbRole.isPresent()) {
+                                        System.out.println("找到角色: " + dbRole.get().getName());
+                                        roles.add(dbRole.get());
+                                    } else {
+                                        System.out.println("未找到角色ID: " + role.getId());
+                                    }
                                 }
                             }
                         }
                         
-                        // 只有找到有效角色时才更新
-                        if (!roles.isEmpty()) {
-                            System.out.println("更新角色列表: " + roles);
-                            // 先清空现有角色，然后添加新角色
-                            user.getRoles().clear();
-                            user.getRoles().addAll(roles);
-                        } else {
-                            System.out.println("没有找到有效角色，不更新角色信息");
-                        }
+                        // 不管是否找到角色，都清空用户现有角色
+                        System.out.println("更新角色列表，找到角色: " + roles.size() + "个");
+                        // 清空现有角色，然后添加新角色
+                        user.getRoles().clear();
+                        user.getRoles().addAll(roles);
                     }
                     
                     return ResponseEntity.ok(userRepository.save(user));

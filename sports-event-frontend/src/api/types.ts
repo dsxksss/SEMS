@@ -16,4 +16,12 @@ export interface PaginatedResponse<T> {
   last: boolean;
   first: boolean;
   empty: boolean;
+}
+
+// 角色枚举
+export enum ERole {
+  ROLE_ADMIN = 'ROLE_ADMIN',
+  ROLE_USER = 'ROLE_USER', 
+  ROLE_ATHLETE = 'ROLE_ATHLETE',
+  ROLE_SPECTATOR = 'ROLE_SPECTATOR'
 } 

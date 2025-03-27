@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -87,32 +88,91 @@ public class AuthController {
         Set<String> strRoles = signUpRequest.getRoles();
         Set<Role> roles = new HashSet<>();
 
-        if (strRoles == null) {
+        if (strRoles == null || strRoles.isEmpty()) {
+            // 如果没有指定角色，默认为普通用户
             Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
             roles.add(userRole);
         } else {
             strRoles.forEach(role -> {
-                switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(adminRole);
-                        break;
-                    case "athlete":
-                        Role athleteRole = roleRepository.findByName(ERole.ROLE_ATHLETE)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(athleteRole);
-                        break;
-                    case "spectator":
-                        Role spectatorRole = roleRepository.findByName(ERole.ROLE_SPECTATOR)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(spectatorRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(userRole);
+                try {
+                    // 处理角色名称
+                    String normalizedRole = role.toLowerCase();
+                    
+                    // 根据角色名判断对应的ERole
+                    switch (normalizedRole) {
+                        case "admin":
+                            Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                                    .orElseThrow(() -> new RuntimeException("Error: Admin role not found."));
+                            roles.add(adminRole);
+                            break;
+                        case "athlete":
+                            Role athleteRole = roleRepository.findByName(ERole.ROLE_ATHLETE)
+                                    .orElseThrow(() -> new RuntimeException("Error: Athlete role not found."));
+                            roles.add(athleteRole);
+                            break;
+                        case "spectator":
+                            Role spectatorRole = roleRepository.findByName(ERole.ROLE_SPECTATOR)
+                                    .orElseThrow(() -> new RuntimeException("Error: Spectator role not found."));
+                            roles.add(spectatorRole);
+                            break;
+                        case "user":
+                            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                                    .orElseThrow(() -> new RuntimeException("Error: User role not found."));
+                            roles.add(userRole);
+                            break;
+                        default:
+                            // 对于其他角色，检查是否是完整的ROLE_格式
+                            // 由于我们不能直接通过字符串查找角色，因此需要先查找所有角色，然后手动过滤
+                            if (normalizedRole.startsWith("role_")) {
+                                String fullRoleName = normalizedRole.toUpperCase();
+                                boolean foundRole = false;
+                                // 遍历所有角色，查找匹配的角色名
+                                for (Role existingRole : roleRepository.findAll()) {
+                                    if (existingRole.getName().toString().equals(fullRoleName)) {
+                                        roles.add(existingRole);
+                                        foundRole = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundRole) {
+                                    // 如果找不到角色，使用默认用户角色
+                                    System.out.println("未找到角色 " + fullRoleName + "，使用默认用户角色");
+                                    Role defaultRole = roleRepository.findByName(ERole.ROLE_USER)
+                                            .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                                    roles.add(defaultRole);
+                                }
+                            } else {
+                                // 如果不是ROLE_格式，则尝试查找所有角色中是否有匹配的displayName
+                                boolean foundRole = false;
+                                for (Role existingRole : roleRepository.findAll()) {
+                                    // 检查角色的displayName属性（如果有的话）
+                                    if (existingRole.getDisplayName() != null && 
+                                        existingRole.getDisplayName().toLowerCase().equals(normalizedRole)) {
+                                        roles.add(existingRole);
+                                        foundRole = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundRole) {
+                                    // 如果找不到角色，使用默认用户角色
+                                    System.out.println("未找到角色名称 " + normalizedRole + "，使用默认用户角色");
+                                    Role defaultRole = roleRepository.findByName(ERole.ROLE_USER)
+                                            .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                                    roles.add(defaultRole);
+                                }
+                            }
+                    }
+                } catch (Exception e) {
+                    System.out.println("处理角色时出错: " + e.getMessage());
+                    // 如果发生异常，默认为普通用户
+                    try {
+                        Role defaultRole = roleRepository.findByName(ERole.ROLE_USER)
+                                .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                        roles.add(defaultRole);
+                    } catch (Exception ex) {
+                        System.out.println("获取默认角色失败: " + ex.getMessage());
+                    }
                 }
             });
         }

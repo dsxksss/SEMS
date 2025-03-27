@@ -178,6 +178,56 @@ export const useAuthStore = defineStore('auth', {
         // 更新localStorage中的用户信息
         localStorage.setItem('user', JSON.stringify(this.user));
       }
+    },
+    
+    // 检查token是否已过期
+    checkTokenExpiration() {
+      const token = localStorage.getItem('token');
+      
+      // 如果没有token，则视为已过期
+      if (!token) {
+        console.log('没有找到token');
+        return true;
+      }
+      
+      try {
+        // JWT格式为：header.payload.signature
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          console.error('Token格式不正确');
+          return true;
+        }
+        
+        // 解码payload
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('Token payload:', payload);
+        
+        // 检查exp(过期时间)字段
+        if (payload.exp) {
+          const expirationTime = payload.exp * 1000; // 转换为毫秒
+          const currentTime = Date.now();
+          
+          const timeUntilExpiration = expirationTime - currentTime;
+          console.log(`Token过期时间: ${new Date(expirationTime).toLocaleString()}`);
+          console.log(`当前时间: ${new Date(currentTime).toLocaleString()}`);
+          console.log(`剩余时间: ${Math.floor(timeUntilExpiration / 1000 / 60)} 分钟`);
+          
+          // 如果token已过期
+          if (currentTime > expirationTime) {
+            console.log('Token已过期');
+            return true;
+          }
+          
+          // token没有过期
+          return false;
+        }
+      } catch (error) {
+        console.error('解析Token失败:', error);
+        return true;
+      }
+      
+      // 如果没有exp字段或解析失败，保守起见视为已过期
+      return true;
     }
   }
 }); 
