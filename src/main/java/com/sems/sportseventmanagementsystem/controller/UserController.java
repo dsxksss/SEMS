@@ -163,6 +163,46 @@ public class UserController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateCurrentUser(@RequestBody User userDetails) {
+        UserDetailsImpl userDetails1 = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return userRepository.findById(userDetails1.getId())
+                .map(user -> {
+                    if (userDetails.getEmail() != null) {
+                        user.setEmail(userDetails.getEmail());
+                    }
+                    if (userDetails.getPhone() != null) {
+                        user.setPhone(userDetails.getPhone());
+                    }
+                    if (userDetails.getRealName() != null) {
+                        user.setRealName(userDetails.getRealName());
+                    }
+                    if (userDetails.getAvatar() != null) {
+                        user.setAvatar(userDetails.getAvatar());
+                    }
+                    return ResponseEntity.ok(userRepository.save(user));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // 专门用于更新当前用户头像的端点
+    @PutMapping("/me/avatar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateCurrentUserAvatar(@RequestBody AvatarRequest avatarRequest) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        
+        System.out.println("正在更新用户头像. 用户ID: " + userDetails.getId() + ", 头像URL: " + avatarRequest.getAvatarUrl());
+        
+        return userRepository.findById(userDetails.getId())
+                .map(user -> {
+                    user.setAvatar(avatarRequest.getAvatarUrl());
+                    userRepository.save(user);
+                    return ResponseEntity.ok(new MessageResponse("Avatar updated successfully"));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // Inner class for password change request
     static class PasswordChangeRequest {
         private String newPassword;
@@ -186,6 +226,19 @@ public class UserController {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+    }
+
+    // 头像请求内部类
+    static class AvatarRequest {
+        private String avatarUrl;
+
+        public String getAvatarUrl() {
+            return avatarUrl;
+        }
+
+        public void setAvatarUrl(String avatarUrl) {
+            this.avatarUrl = avatarUrl;
         }
     }
 } 

@@ -1,0 +1,16 @@
+/* Element Plus 组件样式覆盖 */
+
+/* 去除Avatar组件的焦点边框 */
+.el-avatar:focus,
+.el-avatar:hover {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* 去除下拉菜单触发器的焦点边框 */
+.el-dropdown-link:focus,
+.el-dropdown .el-dropdown-selfdefine:focus,
+.el-dropdown-menu__item:focus {
+  outline: none !important;
+} 

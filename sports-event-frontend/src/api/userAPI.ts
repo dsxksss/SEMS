@@ -35,6 +35,14 @@ export const userAPI = {
   },
 
   /**
+   * 更新当前用户头像
+   */
+  updateAvatar: async (avatarUrl: string) => {
+    const response = await apiClient.put('/users/me/avatar', { avatarUrl });
+    return response.data;
+  },
+
+  /**
    * 上传用户头像
    */
   uploadAvatar: async (file: File) => {

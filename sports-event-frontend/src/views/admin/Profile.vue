@@ -2,7 +2,7 @@
   <div class="profile-container">
     <el-row :gutter="20">
       <!-- 左侧用户信息 -->
-      <el-col :sm="4" :md="8" :lg="6">
+      <el-col :sm="10" :md="10" :lg="9">
         <el-card shadow="hover" class="user-card">
           <div class="user-header">
             <div class="avatar-container">
@@ -20,6 +20,7 @@
                 :key="role"
                 :type="getRoleTagType(role)"
                 class="role-tag"
+                effect="light"
               >
                 {{ formatRoleName(role) }}
               </el-tag>
@@ -27,6 +28,7 @@
           </div>
           
           <div class="user-info">
+            <div class="info-title">基本信息</div>
             <div class="info-item">
               <span class="label">邮箱：</span>
               <span class="value">{{ userInfo.email }}</span>
@@ -39,12 +41,20 @@
               <span class="label">最后登录：</span>
               <span class="value">{{ userInfo.lastLogin }}</span>
             </div>
+            <div class="info-item" v-if="userInfo.realName">
+              <span class="label">真实姓名：</span>
+              <span class="value">{{ userInfo.realName }}</span>
+            </div>
+            <div class="info-item" v-if="userInfo.phone">
+              <span class="label">手机号码：</span>
+              <span class="value">{{ userInfo.phone }}</span>
+            </div>
           </div>
         </el-card>
       </el-col>
       
       <!-- 右侧信息编辑 -->
-      <el-col :sm="24" :md="16" :lg="18">
+      <el-col :sm="14" :md="14" :lg="15">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
@@ -180,6 +190,7 @@
           :show-file-list="false"
           :on-success="handleAvatarSuccess"
           :before-upload="beforeAvatarUpload"
+          :on-error="handleAvatarError"
           name="file"
         >
           <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
@@ -382,48 +393,40 @@ const beforeAvatarUpload = (file: File) => {
   return true;
 };
 
+// 处理上传错误
+const handleAvatarError = (error: any) => {
+  uploadingAvatar.value = false;
+  console.error('头像上传失败:', error);
+  ElMessage.error('头像上传失败，请重试');
+};
+
 // 上传成功回调
 const handleAvatarSuccess = async (response: any) => {
   uploadingAvatar.value = false;
   console.log('上传响应:', response);
   
-  // 处理不同的响应格式
-  let avatarPath = '';
-  if (response && response.filename) {
-    avatarPath = `/api/files/download/${response.filename}`;
-  } else if (response && response.id) {
-    avatarPath = `/api/files/download/${response.id}`;
-  } else if (response && response.fileId) {
-    avatarPath = `/api/files/download/${response.fileId}`;
-  } else if (response && response.data) {
-    avatarPath = response.data;
-  } else if (typeof response === 'string') {
-    avatarPath = response;
-  }
-  
-  // 确保URL不包含token参数
-  if (avatarPath) {
-    try {
-      // 移除URL中的token参数
-      const urlWithoutToken = avatarPath.split('?')[0];
-      
-      // 更新本地头像
-      userInfo.avatar = urlWithoutToken;
-      authStore.updateUserAvatar(urlWithoutToken);
-      avatarUrl.value = urlWithoutToken;
-      
-      // 关键修复：调用API更新用户头像到后端数据库
-      await userAPI.updateCurrentUser({ avatar: urlWithoutToken });
-      
-      ElMessage.success('头像更新成功');
-      avatarDialogVisible.value = false;
-    } catch (error) {
-      console.error('保存头像到后端失败:', error);
-      ElMessage.error('头像更新失败，请重试');
+  try {
+    // 使用response.filename获取文件名
+    if (!response || !response.filename) {
+      throw new Error('上传响应缺少文件名');
     }
-  } else {
-    ElMessage.error('头像上传失败，请重试');
-    console.error('无效的响应格式:', response);
+
+    // 创建头像URL
+    const avatarPath = `/api/files/download/${response.filename}`;
+    
+    // 更新本地状态
+    userInfo.avatar = avatarPath;
+    authStore.updateUserAvatar(avatarPath);
+    avatarUrl.value = avatarPath;
+    
+    // 使用专门的头像更新API
+    await userAPI.updateAvatar(avatarPath);
+    
+    ElMessage.success('头像更新成功');
+    avatarDialogVisible.value = false;
+  } catch (error) {
+    console.error('保存头像失败:', error);
+    ElMessage.error('头像更新失败，请重试');
   }
 };
 
@@ -518,6 +521,7 @@ onMounted(async () => {
 
 .user-card {
   height: 100%;
+  border-radius: 8px;
 }
 
 .user-header {
@@ -526,17 +530,27 @@ onMounted(async () => {
   align-items: center;
   padding: 20px 0;
   border-bottom: 1px solid #f0f0f0;
+  background-color: #f9fafc;
 }
 
 .username {
-  font-size: 18px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
   margin: 10px 0 5px;
+  color: #303133;
 }
 
 .avatar-container {
   position: relative;
   margin-bottom: 15px;
+}
+
+.avatar-container .el-avatar:hover,
+.avatar-container .el-avatar:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border: none !important;
 }
 
 .change-avatar-btn {
@@ -545,9 +559,7 @@ onMounted(async () => {
   bottom: 0;
   border-radius: 50%;
   padding: 8px;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  border: none;
+  color: gray;
 }
 
 .user-role {
@@ -563,21 +575,36 @@ onMounted(async () => {
 
 .user-info {
   padding: 20px;
+  width: 100%;
+}
+
+.info-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 10px;
 }
 
 .info-item {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   display: flex;
+  flex-wrap: wrap;
+  font-size: 14px;
 }
 
 .info-item .label {
-  width: 80px;
-  color: #909399;
+  width: 100px;
+  color: #606266;
+  flex-shrink: 0;
+  font-weight: 500;
 }
 
 .info-item .value {
   flex: 1;
   color: #303133;
+  word-break: break-all;
+  min-width: 0;
+  padding-right: 10px;
+  font-weight: 400;
 }
 
 .card-header {

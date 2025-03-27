@@ -193,7 +193,7 @@ const handleDelete = (row: Role) => {
     {
       confirmButtonText: '确认',
       cancelButtonText: '取消',
-      type: 'danger'
+      type: 'warning'
     }
   )
     .then(async () => {

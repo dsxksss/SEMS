@@ -74,7 +74,14 @@
           </div>
           <div class="flex items-center">
             <el-dropdown>
-              <span class="flex items-center cursor-pointer text-sm">
+              <span class="flex items-center cursor-pointer text-sm user-avatar-dropdown">
+                <el-avatar 
+                  size="small" 
+                  class="mr-2" 
+                  :src="authStore.user?.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
+                >
+                  {{ authStore.user?.username?.substring(0, 1).toUpperCase() }}
+                </el-avatar>
                 {{ authStore.user?.username }}
                 <el-icon class="ml-1"><el-icon-arrow-down /></el-icon>
               </span>
@@ -262,5 +269,21 @@ html, body, #app {
 
 .el-dropdown-menu__item:hover {
   background-color: #ecf5ff !important;
+}
+
+.user-avatar-dropdown:hover,
+.user-avatar-dropdown:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border: none !important;
+}
+
+.user-avatar-dropdown .el-avatar:hover,
+.user-avatar-dropdown .el-avatar:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border: none !important;
 }
 </style> 

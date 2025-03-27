@@ -9,7 +9,18 @@ const authStore = useAuthStore();
     <header class="header">
       <h1>体育赛事管理系统</h1>
       <div class="user-info">
-        <span v-if="authStore.user">欢迎, {{ authStore.user.username }}</span>
+        <template v-if="authStore.user">
+          <div class="flex items-center user-avatar-container">
+            <el-avatar 
+              size="small" 
+              class="mr-2 user-avatar" 
+              :src="authStore.user.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
+            >
+              {{ authStore.user.username?.substring(0, 1).toUpperCase() }}
+            </el-avatar>
+            <span>欢迎, {{ authStore.user.username }}</span>
+          </div>
+        </template>
         <el-button type="danger" size="small" @click="authStore.logout">退出登录</el-button>
       </div>
     </header>
@@ -112,5 +123,38 @@ const authStore = useAuthStore();
   text-align: center;
   padding: 16px;
   margin-top: auto;
+}
+
+/* 添加Tailwind相关类 */
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+/* 用户头像样式 */
+.user-avatar-container:hover,
+.user-avatar-container:focus {
+  outline: none !important;
+}
+
+.user-avatar:hover,
+.user-avatar:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  border: none !important;
+}
+
+.el-avatar:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 </style> 
