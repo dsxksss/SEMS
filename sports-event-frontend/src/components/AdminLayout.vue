@@ -2,29 +2,31 @@
   <div class="min-h-screen bg-gray-100">
     <div class="flex h-screen overflow-hidden">
       <!-- 侧边栏 -->
-      <div class="w-64 bg-[#304156] flex-shrink-0">
-        <div class="py-4 px-4 bg-[#263445] text-white">
-          <h2 class="text-base font-medium">体育赛事管理系统</h2>
+      <div class="bg-[#304156] flex-shrink-0 transition-all duration-300" :class="isCollapse ? 'w-16' : 'w-64'">
+        <div class="py-4 px-4 bg-[#263445] text-white overflow-hidden whitespace-nowrap transition-all">
+          <h2 class="text-base font-medium">{{ isCollapse ? '系统' : '体育赛事管理系统' }}</h2>
         </div>
         <el-menu
           router
-          :default-active="$route.path"
+          :default-active="activeMenu"
           class="el-menu-vertical border-none h-[calc(100%-4rem)]"
           background-color="#304156"
           text-color="#bfcbd9"
           active-text-color="#409EFF"
+          :unique-opened="true"
+          :collapse="isCollapse"
         >
           <el-menu-item index="/admin/dashboard">
             <el-icon><el-icon-menu /></el-icon>
-            <span>系统首页</span>
+            <template #title>系统首页</template>
           </el-menu-item>
           
           <el-menu-item index="/admin/profile">
             <el-icon><el-icon-user /></el-icon>
-            <span>个人中心</span>
+            <template #title>个人中心</template>
           </el-menu-item>
           
-          <el-sub-menu index="/admin/users">
+          <el-sub-menu index="users">
             <template #title>
               <el-icon><el-icon-user-filled /></el-icon>
               <span>用户管理</span>
@@ -33,7 +35,7 @@
             <el-menu-item index="/admin/users/roles">角色管理</el-menu-item>
           </el-sub-menu>
           
-          <el-sub-menu index="/admin/events">
+          <el-sub-menu index="events">
             <template #title>
               <el-icon><el-icon-trophy /></el-icon>
               <span>赛事项目管理</span>
@@ -44,22 +46,22 @@
           
           <el-menu-item index="/admin/registrations">
             <el-icon><el-icon-document /></el-icon>
-            <span>运动员报名管理</span>
+            <template #title>运动员报名管理</template>
           </el-menu-item>
           
           <el-menu-item index="/admin/results">
             <el-icon><el-icon-data-line /></el-icon>
-            <span>赛事结果管理</span>
+            <template #title>赛事结果管理</template>
           </el-menu-item>
           
           <el-menu-item index="/admin/reports">
             <el-icon><el-icon-document-copy /></el-icon>
-            <span>报表汇总打印</span>
+            <template #title>报表汇总打印</template>
           </el-menu-item>
           
           <el-menu-item index="/admin/announcements">
             <el-icon><el-icon-bell /></el-icon>
-            <span>公告管理</span>
+            <template #title>公告管理</template>
           </el-menu-item>
         </el-menu>
       </div>
@@ -69,7 +71,13 @@
         <!-- 顶部导航栏 -->
         <header class="bg-white border-b border-gray-200 shadow-sm h-16 flex items-center px-6 justify-between">
           <div class="flex items-center">
-            <el-icon class="text-xl cursor-pointer mr-4"><el-icon-fold /></el-icon>
+            <div 
+              class="collapse-btn text-xl mr-4"
+              @click="toggleCollapse"
+            >
+              <el-icon v-if="isCollapse"><el-icon-expand /></el-icon>
+              <el-icon v-else><el-icon-fold /></el-icon>
+            </div>
           </div>
           <div class="flex items-center">
             <el-dropdown>
@@ -123,10 +131,44 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '../stores/auth';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
+import { computed, ref, onMounted } from 'vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+
+// 菜单折叠状态
+const isCollapse = ref(false);
+
+// 切换折叠状态
+const toggleCollapse = () => {
+  isCollapse.value = !isCollapse.value;
+  // 可以考虑将状态保存到localStorage
+  localStorage.setItem('menuCollapsed', String(isCollapse.value));
+};
+
+// 确保菜单正确高亮当前路由
+const activeMenu = computed(() => {
+  // 当前路由路径
+  const { path } = route;
+  
+  // 优先使用路由元信息中的activeMenu属性
+  if (route.meta.activeMenu) {
+    return route.meta.activeMenu;
+  }
+  
+  // 否则使用当前路径
+  return path;
+});
+
+// 组件挂载时读取保存的折叠状态
+onMounted(() => {
+  const savedState = localStorage.getItem('menuCollapsed');
+  if (savedState !== null) {
+    isCollapse.value = savedState === 'true';
+  }
+});
 </script>
 
 <style>
@@ -146,33 +188,110 @@ html, body, #app {
 .el-menu-vertical {
   background-color: #304156 !important;
   transition: width 0.3s;
+  padding: 0 !important;
 }
 
+/* 菜单折叠状态 */
+.el-menu--collapse {
+  width: auto !important;
+}
+
+.el-menu--collapse .el-menu-item,
+.el-menu--collapse .el-sub-menu__title {
+  padding-left: 15px !important;
+}
+
+/* 菜单项基础样式 */
 .el-menu-item {
-  height: 50px !important;
-  line-height: 50px !important;
-  border-left: 3px solid transparent;
+  height: 56px !important;
+  line-height: 56px !important;
+  border-left: 4px solid transparent;
   transition: all 0.3s;
+  padding-left: 16px !important; /* 统一左侧边距 */
+  font-size: 14px !important;
 }
 
+/* 菜单项激活状态 */
 .el-menu-item.is-active {
-  background-color: #263445 !important;
-  color: #409EFF !important;
-  border-left: 3px solid #409EFF;
+  background-color: #1f2d3d !important;
+  border-left: 4px solid #409EFF;
+  color: #ffffff !important;
+  font-weight: 500;
 }
 
-.el-menu-item:hover {
-  background-color: #263445 !important;
-}
 
+
+/* 子菜单标题样式 */
 .el-sub-menu__title {
-  height: 50px !important;
-  line-height: 50px !important;
+  height: 56px !important;
+  line-height: 56px !important;
   transition: all 0.3s;
+  border-left: 4px solid transparent;
+  padding-left: 16px !important; /* 统一左侧边距 */
+  font-size: 14px !important;
 }
 
+/* 子菜单标题悬停状态 */
 .el-sub-menu__title:hover {
   background-color: #263445 !important;
+  color: #ffffff !important;
+}
+
+/* 子菜单激活状态 */
+.el-sub-menu.is-active > .el-sub-menu__title {
+  color: #f4f4f5 !important;
+  border-left: 4px solid #409EFF;
+}
+
+/* 子菜单样式优化 */
+.el-menu--inline {
+  background-color: #1f2d3d !important;
+  padding: 5px 0 !important;
+}
+
+.el-menu--inline .el-menu-item {
+  background-color: #1f2d3d !important;
+  height: 50px !important;
+  line-height: 50px !important;
+  padding-left: 48px !important; /* 子菜单缩进 */
+  font-size: 13px !important;
+  margin: 0 !important;
+}
+
+
+
+.el-menu--inline .el-menu-item:hover {
+  background-color: #001528 !important;
+}
+
+/* 图标样式统一 */
+.el-menu-item .el-icon,
+.el-sub-menu__title .el-icon {
+  color: inherit;
+  font-size: 18px;
+  margin-right: 10px;
+  width: 24px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 折叠按钮样式 */
+.collapse-btn {
+  background-color: transparent;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #409EFF;
 }
 
 /* 面包屑导航 */
