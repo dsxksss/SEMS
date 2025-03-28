@@ -28,7 +28,7 @@ public class FileController {
     private String uploadDir;
 
     @PostMapping("/upload")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {

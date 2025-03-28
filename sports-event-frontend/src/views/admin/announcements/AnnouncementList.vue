@@ -232,6 +232,8 @@ import dayjs from 'dayjs';
 import { announcementAPI } from '../../../api';
 import { ElMessageBox } from 'element-plus';
 import { useAuthStore } from '../../../stores/auth';
+import apiClient from '../../../api/axios';
+import axios from 'axios';
 
 const authStore = useAuthStore();
 
@@ -693,29 +695,54 @@ const beforeImageUpload = (file: File) => {
 
 // 处理图片上传成功
 const handleImageSuccess = (response: any, file: any) => {
-  // 获取图片URL
-  let imageUrl = '';
-  if (response && response.data) {
-    imageUrl = response.data;
-  } else if (response && response.filename) {
-    // 确保使用完整的URL路径，包含/api前缀
-    imageUrl = `/api/files/download/${response.filename}`;
-  } else if (response && response.id) {
-    imageUrl = `/api/files/download/${response.id}`;
-  } else if (response && response.fileId) {
-    imageUrl = `/api/files/download/${response.fileId}`;
-  } else if (typeof response === 'string') {
-    imageUrl = response;
+  console.log('上传成功，完整响应数据:', JSON.stringify(response));
+  
+  // 检查响应是否为undefined (防止重复调用)
+  if (!response) {
+    console.log('忽略undefined响应');
+    return;
   }
   
-  if (imageUrl) {
+  // 尝试从不同格式的响应中获取文件名
+  let filename = null;
+  
+  if (response) {
+    if (response.filename) {
+      // 标准格式
+      filename = response.filename;
+      console.log('从response.filename获取文件名:', filename);
+    } else if (response.data && response.data.filename) {
+      // 嵌套在data字段中
+      filename = response.data.filename;
+      console.log('从response.data.filename获取文件名:', filename);
+    } else if (typeof response === 'string') {
+      // 字符串格式(可能是直接返回的文件名)
+      filename = response;
+      console.log('响应是字符串格式:', filename);
+    } else if (response.id) {
+      // 有些API可能返回id作为文件标识
+      filename = response.id;
+      console.log('使用response.id作为文件名:', filename);
+    } else {
+      // 尝试检查响应中的所有字段
+      console.log('未找到标准字段，检查所有响应字段:');
+      for (const key in response) {
+        console.log(`- ${key}:`, response[key]);
+      }
+    }
+  }
+  
+  if (filename) {
+    const imageUrl = `/api/files/download/${filename}`;
+    console.log('构建的图片URL:', imageUrl);
+    
     // 在当前光标位置插入图片HTML
     const imgHtml = `<img src="${imageUrl}" alt="${file.name}" style="max-width: 100%; margin: 10px 0;" />`;
     // 将图片HTML插入到内容中
     announcementForm.content += imgHtml;
     ElMessage.success('图片插入成功');
   } else {
-    ElMessage.error('图片上传失败，请重试');
+    ElMessage.error('无法从响应中获取文件名');
     console.error('无效的响应格式:', response);
   }
 };
@@ -734,30 +761,41 @@ const handleHttpUpload = async (options: any) => {
     const formData = new FormData();
     formData.append('file', file);
     
-    // 使用axios直接请求，确保带上token
-    const response = await fetch('/api/files/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: formData
-    });
+    console.log('开始上传文件，大小:', file.size, '类型:', file.type);
     
-    if (!response.ok) {
-      if (response.status === 401) {
-        ElMessage.error('登录信息已过期，请重新登录');
-        setTimeout(() => {
-          authStore.logout();
-        }, 1000);
-        return options.onError(new Error('未授权'));
+    // 获取当前token
+    const token = authStore.token;
+    console.log('使用token:', token?.substring(0, 20) + '...');
+    
+    try {
+      // 直接使用axios而不是apiClient，以完全控制请求
+      const response = await axios.post('/api/files/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('文件上传成功，响应:', response.data);
+      options.onSuccess(response.data);
+    } catch (error) {
+      console.error('apiClient上传错误:', error);
+      if (error.response) {
+        console.error('错误状态码:', error.response.status);
+        console.error('错误详情:', error.response.data);
       }
-      throw new Error(`上传失败: ${response.statusText}`);
+      throw error; // 向上传递错误
     }
-    
-    const result = await response.json();
-    options.onSuccess(result);
   } catch (error) {
     console.error('上传处理错误:', error);
+    if (error.response && error.response.status === 401) {
+      ElMessage.error('登录信息已过期，请重新登录');
+      setTimeout(() => {
+        authStore.logout();
+      }, 1000);
+    } else {
+      ElMessage.error(`上传失败: ${error.message || '未知错误'}`);
+    }
     options.onError(error);
   }
 };
