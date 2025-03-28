@@ -10,10 +10,9 @@
             <div class="avatar-actions">
               <el-upload
                 class="avatar-uploader"
-                action="/api/users/avatar"
-                :headers="uploadHeaders"
+                action="#"
+                :http-request="uploadAvatar"
                 :show-file-list="false"
-                :on-success="handleAvatarSuccess"
                 :before-upload="beforeAvatarUpload"
               >
                 <el-button type="primary" size="small">更换头像</el-button>
@@ -25,7 +24,7 @@
             <h2 class="username">{{ userInfo.username }}</h2>
             <p class="email">{{ userInfo.email }}</p>
             <div class="user-roles">
-              <el-tag v-for="role in userRoles" :key="role" size="small" effect="plain">
+              <el-tag v-for="(role, index) in userRoles" :key="index" size="small" effect="plain">
                 {{ getRoleName(role) }}
               </el-tag>
             </div>
@@ -281,6 +280,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { userAPI } from '../../api/userAPI';
+import type { Activity } from '../../api/userAPI';
 import { registrationAPI } from '../../api/registrationAPI';
 import { ElMessage, FormInstance, FormRules } from 'element-plus';
 import { formatDateTime, formatDate } from '../../utils/formatter';
@@ -289,7 +289,11 @@ const authStore = useAuthStore();
 
 // 用户基本信息
 const userInfo = computed(() => authStore.user || {});
-const userRoles = computed(() => userInfo.value?.roles || []);
+// 确保角色数据正确格式化
+const userRoles = computed(() => {
+  const roles = userInfo.value?.roles || [];
+  return roles;
+});
 
 // 数据加载状态
 const loadingActivities = ref(true);
@@ -391,14 +395,7 @@ const countdown = ref(60);
 const codeButtonText = computed(() => codeCounting.value ? `${countdown.value}秒后重试` : '获取验证码');
 
 // 活动记录
-const activities = ref<any[]>([]);
-
-// 上传头像的请求头
-const uploadHeaders = computed(() => {
-  return {
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
-  };
-});
+const activities = ref<Activity[]>([]);
 
 // 初始化数据
 onMounted(async () => {
@@ -428,8 +425,7 @@ const fetchRegistrationCount = async () => {
 const fetchActivities = async () => {
   loadingActivities.value = true;
   try {
-    // 模拟活动记录，实际应该从API获取
-    // 这里可以替换为真实的活动记录API
+    // 后端没有对应的活动记录API，使用模拟数据
     setTimeout(() => {
       activities.value = [
         {
@@ -453,7 +449,7 @@ const fetchActivities = async () => {
         }
       ];
       loadingActivities.value = false;
-    }, 1000);
+    }, 500);
   } catch (error) {
     console.error('获取活动记录失败:', error);
     loadingActivities.value = false;
@@ -526,11 +522,11 @@ const changePassword = async () => {
     if (valid) {
       changingPassword.value = true;
       try {
-        // 调用修改密码API
-        await userAPI.changePassword({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword
-        });
+        // 调用修改密码API (适配新的方法参数)
+        await userAPI.changePassword(
+          passwordForm.currentPassword,
+          passwordForm.newPassword
+        );
         
         ElMessage.success('密码修改成功');
         passwordDialogVisible.value = false;
@@ -640,18 +636,61 @@ const bindPhone = async () => {
   });
 };
 
+// 处理头像更改
+const handleAvatarChange = () => {
+  ElMessage.info('头像上传功能暂未开放，请稍后再试');
+};
+
+// 自定义上传头像
+const uploadAvatar = async (options: any) => {
+  try {
+    console.log('开始上传头像...');
+    const file = options.file;
+    console.log('文件信息:', file.name, file.type, file.size);
+    
+    const url = await userAPI.uploadAvatar(file);
+    console.log('头像上传成功，URL:', url);
+    
+    // 重新获取用户信息，确保头像更新
+    await authStore.refreshUserInfo();
+    
+    // 强制重新渲染组件
+    ElMessage.success('头像上传成功');
+    options.onSuccess();
+  } catch (error: any) {
+    console.error('头像上传失败:', error);
+    let errorMsg = '上传失败，请稍后再试';
+    
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误信息:', error.response.data);
+      
+      if (error.response.data && error.response.data.message) {
+        errorMsg = error.response.data.message;
+      }
+    }
+    
+    ElMessage.error(errorMsg);
+    options.onError();
+  }
+};
+
 // 头像上传前的处理
 const beforeAvatarUpload = (file: File) => {
-  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png';
+  console.log('验证文件:', file.name, file.type, file.size);
+  const isJPG = file.type === 'image/jpeg';
+  const isPNG = file.type === 'image/png';
   const isLt2M = file.size / 1024 / 1024 < 2;
 
-  if (!isJPG) {
+  if (!isJPG && !isPNG) {
     ElMessage.error('头像只能是JPG或PNG格式!');
+    return false;
   }
   if (!isLt2M) {
     ElMessage.error('头像大小不能超过2MB!');
+    return false;
   }
-  return isJPG && isLt2M;
+  return true;
 };
 
 // 头像上传成功的处理
@@ -663,14 +702,41 @@ const handleAvatarSuccess = (response: any) => {
 };
 
 // 获取角色名称
-const getRoleName = (role: string) => {
+const getRoleName = (role: string | any) => {
+  // 处理角色对象的情况
+  if (typeof role === 'object' && role !== null) {
+    if (role.name) {
+      // 如果是对象并且有name属性，使用name属性处理
+      const roleName = role.name;
+      const roleMap: Record<string, string> = {
+        'ROLE_ADMIN': '管理员',
+        'ROLE_USER': '普通用户',
+        'ROLE_MODERATOR': '审核员',
+        'ROLE_ATHLETE': '运动员',
+        'ROLE_SPECTATOR': '观众'
+      };
+      
+      // 优先使用displayName属性(如果存在)
+      if (role.displayName) {
+        return role.displayName;
+      }
+      
+      return roleMap[roleName] || roleName.replace('ROLE_', '');
+    }
+    // 如果是空对象或没有name属性，返回友好的提示
+    return '未知角色';
+  }
+  
+  // 处理字符串的情况
   const roleMap: Record<string, string> = {
     'ROLE_ADMIN': '管理员',
     'ROLE_USER': '普通用户',
-    'ROLE_MODERATOR': '审核员'
+    'ROLE_MODERATOR': '审核员',
+    'ROLE_ATHLETE': '运动员',
+    'ROLE_SPECTATOR': '观众'
   };
   
-  return roleMap[role] || role;
+  return roleMap[role] || (typeof role === 'string' ? role.replace('ROLE_', '') : '未知角色');
 };
 
 // 获取活动类型样式

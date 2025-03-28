@@ -411,7 +411,7 @@ const handleAvatarSuccess = async (response: any) => {
       throw new Error('上传响应缺少文件名');
     }
 
-    // 创建头像URL
+    // 创建头像URL - 确保使用完整的路径
     const avatarPath = `/api/files/download/${response.filename}`;
     
     // 更新本地状态

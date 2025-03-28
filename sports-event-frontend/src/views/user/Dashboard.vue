@@ -191,8 +191,11 @@
 import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { eventsAPI } from '../../api/eventsAPI';
+import type { Event } from '../../api/eventsAPI';
 import { announcementAPI } from '../../api/announcementAPI';
+import type { Announcement } from '../../api/announcementAPI';
 import { registrationAPI } from '../../api/registrationAPI';
+import type { Registration } from '../../api/registrationAPI';
 import { Calendar, Timer, Bell, Location, DocumentChecked, User } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { formatDateTime } from '../../utils/formatter';
@@ -201,17 +204,17 @@ const authStore = useAuthStore();
 const router = useRouter();
 
 // 赛事数据
-const upcomingEvents = ref<any[]>([]);
+const upcomingEvents = ref<Event[]>([]);
 const loadingEvents = ref(true);
 const upcomingEventsCount = ref(0);
 
 // 公告数据
-const latestAnnouncements = ref<any[]>([]);
+const latestAnnouncements = ref<Announcement[]>([]);
 const loadingAnnouncements = ref(true);
 const announcementsCount = ref(0);
 
 // 报名数据
-const myRegistrations = ref<any[]>([]);
+const myRegistrations = ref<Registration[]>([]);
 const loadingRegistrations = ref(true);
 const registrationCount = ref(0);
 

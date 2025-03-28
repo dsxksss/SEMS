@@ -6,15 +6,27 @@
 export const formatDateTime = (dateString: string): string => {
   if (!dateString) return '';
   
-  const date = new Date(dateString);
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
+  try {
+    const date = new Date(dateString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      console.warn(`无效的日期格式: ${dateString}`);
+      return '数据加载中';
+    }
+    
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch (error) {
+    console.error(`日期格式化错误: ${error}`, dateString);
+    return '数据加载中';
+  }
 };
 
 /**
@@ -25,12 +37,24 @@ export const formatDateTime = (dateString: string): string => {
 export const formatDate = (dateString: string): string => {
   if (!dateString) return '';
   
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
+  try {
+    const date = new Date(dateString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      console.warn(`无效的日期格式: ${dateString}`);
+      return '数据加载中';
+    }
+    
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  } catch (error) {
+    console.error(`日期格式化错误: ${error}`, dateString);
+    return '数据加载中';
+  }
 };
 
 /**
@@ -86,24 +110,38 @@ export const formatCount = (count: number): string => {
  * @returns 相对时间
  */
 export const getRelativeTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  if (!dateString) return '';
   
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffSecs < 60) {
-    return '刚刚';
-  } else if (diffMins < 60) {
-    return `${diffMins}分钟前`;
-  } else if (diffHours < 24) {
-    return `${diffHours}小时前`;
-  } else if (diffDays < 30) {
-    return `${diffDays}天前`;
-  } else {
-    return formatDate(dateString);
+  try {
+    const date = new Date(dateString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      console.warn(`无效的日期格式: ${dateString}`);
+      return '数据加载中';
+    }
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffSecs < 60) {
+      return '刚刚';
+    } else if (diffMins < 60) {
+      return `${diffMins}分钟前`;
+    } else if (diffHours < 24) {
+      return `${diffHours}小时前`;
+    } else if (diffDays < 30) {
+      return `${diffDays}天前`;
+    } else {
+      return formatDate(dateString);
+    }
+  } catch (error) {
+    console.error(`相对时间计算错误: ${error}`, dateString);
+    return '数据加载中';
   }
 }; 

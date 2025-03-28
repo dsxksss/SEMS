@@ -190,6 +190,49 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
+    // 刷新用户信息
+    async refreshUserInfo() {
+      try {
+        // 导入用户API
+        const { userAPI } = await import('../api/userAPI');
+        // 获取最新的用户信息
+        const userData = await userAPI.getCurrentUser();
+        if (userData) {
+          // 确保合并所有用户属性，并转换类型以匹配User接口
+          if (this.user) {
+            // 将userData转换为兼容的类型
+            const updatedUser: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email || '',
+              roles: this.user.roles, // 保留原有的roles
+              avatar: userData.avatar,
+              phone: userData.phone,
+              realName: userData.realName
+            };
+            
+            // 更新用户状态
+            this.user = {
+              ...this.user,
+              ...updatedUser
+            };
+          } else {
+            // 如果没有现有用户，尝试转换userData为User类型
+            // 注意：这种情况可能缺少roles字段，实际使用中不应发生
+            this.user = userData as unknown as User;
+          }
+          
+          // 更新localStorage中的用户信息
+          localStorage.setItem('user', JSON.stringify(this.user));
+          console.log('用户信息已刷新:', this.user);
+        }
+        return true;
+      } catch (error) {
+        console.error('刷新用户信息失败:', error);
+        return false;
+      }
+    },
+    
     // 检查token是否已过期
     checkTokenExpiration(showLogs = true) {
       const token = localStorage.getItem('token');

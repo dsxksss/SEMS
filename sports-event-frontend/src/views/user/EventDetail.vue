@@ -66,7 +66,12 @@
               
               <div class="detail-item">
                 <div class="detail-label">报名截止</div>
-                <div class="detail-value">{{ formatDate(event.registrationDeadline) }}</div>
+                <div class="detail-value">
+                  <span :class="{'deadline-warning': isDeadlineApproaching}">
+                    {{ formatDate(event.registrationDeadline) }}
+                    <el-tag v-if="isDeadlineApproaching" size="small" type="warning">即将截止</el-tag>
+                  </span>
+                </div>
               </div>
               
               <div class="detail-item">
@@ -97,10 +102,16 @@
             <div v-else class="announcement-list">
               <div v-for="announcement in eventAnnouncements" :key="announcement.id" class="announcement-item">
                 <div class="announcement-header">
-                  <h4 class="announcement-title">{{ announcement.title }}</h4>
+                  <div class="title-wrapper">
+                    <h4 class="announcement-title">{{ announcement.title }}</h4>
+                    <el-tag v-if="isNewAnnouncement(announcement.createdAt)" size="small" type="danger">新</el-tag>
+                  </div>
                   <span class="announcement-date">{{ formatDate(announcement.createdAt) }}</span>
                 </div>
-                <div class="announcement-content">{{ announcement.content }}</div>
+                <div class="announcement-content" v-html="processContentForPreview(announcement.content)"></div>
+                <div class="announcement-footer">
+                  <span v-if="announcement.createdBy" class="publisher">发布者：{{ getPublisherName(announcement.createdBy) }}</span>
+                </div>
               </div>
             </div>
           </el-card>
@@ -220,17 +231,20 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { eventsAPI } from '../../api/eventsAPI';
+import type { Event } from '../../api/eventsAPI';
 import { announcementAPI } from '../../api/announcementAPI';
+import type { Announcement } from '../../api/announcementAPI';
 import { registrationAPI } from '../../api/registrationAPI';
 import type { Registration } from '../../api/registrationAPI';
+import { ElMessage } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
 
 // 数据状态
-const event = ref<any>(null);
+const event = ref<Event | null>(null);
 const loading = ref(true);
-const eventAnnouncements = ref<any[]>([]);
+const eventAnnouncements = ref<Announcement[]>([]);
 const loadingAnnouncements = ref(true);
 const myRegistration = ref<Registration | null>(null);
 const loadingRegistration = ref(true);
@@ -280,9 +294,45 @@ const fetchEventAnnouncements = async (eventId: number) => {
   loadingAnnouncements.value = true;
   try {
     const data = await announcementAPI.getAnnouncementsByEvent(eventId);
-    eventAnnouncements.value = data;
+    
+    // 数据处理和验证
+    if (Array.isArray(data) && data.length > 0) {
+      eventAnnouncements.value = data.map(announcement => {
+        // 处理内容中的图片URL
+        let processedContent = announcement.content || '';
+        if (processedContent) {
+          // 查找所有图片URL，确保路径正确
+          const imgRegex = /<img[^>]+src="([^"]+)"/g;
+          processedContent = processedContent.replace(imgRegex, (match, url) => {
+            // 移除URL中可能存在的token参数
+            let cleanUrl = url.split('?')[0];
+            
+            // 确保图片URL包含/api前缀
+            if (cleanUrl.includes('/files/download/') && !cleanUrl.startsWith('/api')) {
+              cleanUrl = `/api${cleanUrl}`;
+            }
+            
+            return match.replace(url, cleanUrl);
+          });
+        }
+        
+        // 处理可能存在的日期问题和数据完整性
+        return {
+          ...announcement,
+          id: announcement.id || Date.now(), // 确保有ID用于v-for的key
+          title: announcement.title || '无标题公告',
+          content: processedContent || '无内容',
+          createdAt: announcement.createdAt || new Date().toISOString(),
+          createdBy: announcement.createdBy || '系统'
+        };
+      });
+    } else {
+      console.warn('获取到的公告数据为空或格式不正确', data);
+      eventAnnouncements.value = [];
+    }
   } catch (error) {
     console.error('获取赛事公告失败:', error);
+    eventAnnouncements.value = [];
   } finally {
     loadingAnnouncements.value = false;
   }
@@ -383,8 +433,8 @@ const isRegistrationOpen = computed(() => {
 
 // 是否已达到人数上限
 const isEventFull = computed(() => {
-  // 假设后端会返回当前报名人数信息，如果没有，则这里需要调整
-  return false;
+  if (!event.value || !event.value.currentParticipants) return false;
+  return event.value.currentParticipants >= event.value.maxParticipants;
 });
 
 // 报名关闭原因
@@ -421,17 +471,54 @@ const canCancelRegistration = computed(() => {
   return ['PENDING', 'APPROVED'].includes(myRegistration.value.status);
 });
 
+// 判断是否临近截止时间（24小时内）
+const isDeadlineApproaching = computed(() => {
+  if (!event.value || !event.value.registrationDeadline) return false;
+  
+  try {
+    const deadline = new Date(event.value.registrationDeadline);
+    
+    // 检查日期是否有效
+    if (isNaN(deadline.getTime())) {
+      return false;
+    }
+    
+    const now = new Date();
+    const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    
+    // 如果截止时间在当前时间和24小时后之间，则显示警告
+    return now < deadline && deadline < oneDayLater;
+  } catch (error) {
+    console.error('截止时间计算错误:', error);
+    return false;
+  }
+});
+
 // 辅助函数
 // 格式化日期
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  if (!dateString) return '数据加载中';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      console.warn(`无效的日期格式: ${dateString}`);
+      return '数据加载中';
+    }
+    
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    console.error(`日期格式化错误: ${error}`, dateString);
+    return '数据加载中';
+  }
 };
 
 // 获取状态类型
@@ -477,6 +564,83 @@ const getRegistrationStatusText = (status: string) => {
     default: return status;
   }
 };
+
+// 新增公告判断
+const isNewAnnouncement = (createdAt: string) => {
+  if (!createdAt) return false;
+  
+  try {
+    const createdDate = new Date(createdAt);
+    
+    // 检查日期是否有效
+    if (isNaN(createdDate.getTime())) {
+      console.warn(`无效的日期格式: ${createdAt}`);
+      return false;
+    }
+    
+    const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    return createdDate > threeDaysAgo;
+  } catch (error) {
+    console.error(`日期比较错误: ${error}`, createdAt);
+    return false;
+  }
+};
+
+interface Publisher {
+  realName?: string;
+  username?: string;
+  [key: string]: any;
+}
+
+// 获取发布者名称
+const getPublisherName = (publisher: string | Publisher | undefined): string => {
+  // 如果未定义
+  if (!publisher) return '系统';
+  
+  // 如果是字符串，可能已经是姓名
+  if (typeof publisher === 'string') {
+    // 尝试解析JSON字符串
+    try {
+      const obj = JSON.parse(publisher) as Publisher;
+      if (obj.realName) {
+        return obj.realName;
+      } else if (obj.username) {
+        return obj.username;
+      }
+      // 无法解析有效信息，返回原字符串
+      return publisher;
+    } catch (e) {
+      // 不是有效JSON，直接返回原字符串
+      return publisher;
+    }
+  }
+  
+  // 如果是对象，直接获取属性
+  return publisher.realName || publisher.username || '系统';
+};
+
+// 处理内容预览，保留图片并截断文本
+const processContentForPreview = (content: string) => {
+  if (!content) return '';
+  
+  // 先处理图片URL，确保路径正确
+  let processedContent = content;
+  const imgRegex = /<img[^>]+src="([^"]+)"/g;
+  processedContent = processedContent.replace(imgRegex, (match, url) => {
+    // 移除URL中可能存在的token参数
+    let cleanUrl = url.split('?')[0];
+    
+    // 确保图片URL包含/api前缀
+    if (cleanUrl.includes('/files/download/') && !cleanUrl.startsWith('/api')) {
+      cleanUrl = `/api${cleanUrl}`;
+    }
+    
+    return match.replace(url, cleanUrl);
+  });
+  
+  return processedContent;
+};
 </script>
 
 <style scoped>
@@ -492,6 +656,10 @@ const getRegistrationStatusText = (status: string) => {
 
 .event-header {
   margin-bottom: 24px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
 }
 
 .breadcrumb {
@@ -509,59 +677,80 @@ const getRegistrationStatusText = (status: string) => {
 .event-title {
   margin: 0;
   font-size: 28px;
+  color: #303133;
 }
 
 .event-body {
   margin-bottom: 40px;
 }
 
-.main-info {
-  margin-bottom: 20px;
+.main-info, .registration-card, .announcement-card {
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.main-info:hover, .registration-card:hover, .announcement-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: #f8fafc;
+  padding: 12px 20px;
 }
 
 .card-header h2, .card-header h3 {
   margin: 0;
+  color: #303133;
+  font-weight: 600;
 }
 
 .event-details {
   margin-bottom: 24px;
+  padding: 16px 0;
 }
 
 .detail-item {
   display: flex;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   align-items: flex-start;
 }
 
 .detail-label {
   width: 100px;
-  color: #909399;
+  color: #606266;
   font-weight: 500;
 }
 
 .detail-value {
   flex: 1;
+  color: #303133;
+}
+
+.description-section {
+  border-top: 1px solid #ebeef5;
+  padding-top: 16px;
 }
 
 .description-section h3 {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: 18px;
+  font-size: 16px;
+  color: #303133;
 }
 
 .event-description {
   white-space: pre-line;
   line-height: 1.6;
+  color: #606266;
 }
 
 .announcement-card {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .announcement-list {
@@ -571,35 +760,78 @@ const getRegistrationStatusText = (status: string) => {
 }
 
 .announcement-item {
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
 }
 
-.announcement-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+.announcement-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .announcement-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.title-wrapper {
+  display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 8px;
 }
 
 .announcement-title {
   margin: 0;
   font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .announcement-date {
-  font-size: 12px;
+  font-size: 13px;
   color: #909399;
 }
 
 .announcement-content {
-  white-space: pre-line;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 10px 0;
+  word-break: break-word;
+}
+
+/* 确保图片在查看时正常显示 */
+.announcement-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.publisher {
+  font-style: italic;
+}
+
+.empty-data {
+  padding: 30px 0;
+}
+
+.loading-placeholder {
+  padding: 20px 0;
 }
 
 .registration-card {
@@ -638,10 +870,6 @@ const getRegistrationStatusText = (status: string) => {
   margin-top: 16px;
 }
 
-.loading-placeholder, .empty-data {
-  padding: 20px 0;
-}
-
 @media (max-width: 768px) {
   .title-section {
     flex-direction: column;
@@ -650,11 +878,16 @@ const getRegistrationStatusText = (status: string) => {
   
   .detail-item {
     flex-direction: column;
+    gap: 4px;
   }
   
   .detail-label {
     width: 100%;
-    margin-bottom: 4px;
   }
+}
+
+.deadline-warning {
+  color: #e6a23c;
+  font-weight: 600;
 }
 </style> 

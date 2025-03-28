@@ -47,9 +47,7 @@
             </div>
             <span class="announcement-date">{{ formatDateTime(announcement.createdAt) }}</span>
           </div>
-          <div class="announcement-content-preview">
-            {{ truncateContent(announcement.content) }}
-          </div>
+          <div class="announcement-content-preview" v-html="processContentForPreview(announcement.content)"></div>
           <div class="announcement-footer">
             <span class="publisher">发布者：{{ getPublisherName(announcement.createdBy) }}</span>
             <el-button link type="primary" size="small">阅读全文</el-button>
@@ -80,9 +78,7 @@
         <span>发布时间：{{ formatDateTime(currentAnnouncement.createdAt) }}</span>
         <span>发布者：{{ getPublisherName(currentAnnouncement.createdBy) }}</span>
       </div>
-      <div class="announcement-full-content">
-        {{ currentAnnouncement.content }}
-      </div>
+      <div class="announcement-full-content" v-html="currentAnnouncement.content"></div>
       <template #footer>
         <el-button @click="dialogVisible = false">关闭</el-button>
       </template>
@@ -108,6 +104,12 @@ const timeFilter = ref('all');
 const dialogVisible = ref(false);
 const currentAnnouncement = ref<Announcement>({} as Announcement);
 
+interface Publisher {
+  realName?: string;
+  username?: string;
+  [key: string]: any;
+}
+
 // 判断是否为新公告（3天内）
 const isNew = (date: string) => {
   const announcementDate = new Date(date);
@@ -118,15 +120,18 @@ const isNew = (date: string) => {
 };
 
 // 获取发布者姓名
-const getPublisherName = (publisher: any): string => {
+const getPublisherName = (publisher: string | Publisher | undefined): string => {
+  // 如果未定义
+  if (!publisher) return '系统';
+  
   // 如果是字符串，可能已经是姓名
   if (typeof publisher === 'string') {
     // 尝试解析JSON字符串
     try {
-      const obj = JSON.parse(publisher);
-      if (obj && obj.realName) {
+      const obj = JSON.parse(publisher) as Publisher;
+      if (obj.realName) {
         return obj.realName;
-      } else if (obj && obj.username) {
+      } else if (obj.username) {
         return obj.username;
       }
       // 无法解析有效信息，返回原字符串
@@ -138,18 +143,51 @@ const getPublisherName = (publisher: any): string => {
   }
   
   // 如果是对象，直接获取属性
-  if (publisher && typeof publisher === 'object') {
-    return publisher.realName || publisher.username || '系统';
-  }
-  
-  // 默认返回
-  return '系统';
+  return publisher.realName || publisher.username || '系统';
 };
 
 // 截断内容
 const truncateContent = (content: string, maxLength = 150) => {
   if (content.length <= maxLength) return content;
   return content.substring(0, maxLength) + '...';
+};
+
+// 处理内容预览，保留图片并截断文本
+const processContentForPreview = (content: string) => {
+  if (!content) return '';
+  
+  // 先处理图片URL，确保路径正确
+  let processedContent = content;
+  const imgRegex = /<img[^>]+src="([^"]+)"/g;
+  processedContent = processedContent.replace(imgRegex, (match, url) => {
+    // 移除URL中可能存在的token参数
+    let cleanUrl = url.split('?')[0];
+    
+    // 确保图片URL包含/api前缀
+    if (cleanUrl.includes('/files/download/') && !cleanUrl.startsWith('/api')) {
+      cleanUrl = `/api${cleanUrl}`;
+    }
+    
+    return match.replace(url, cleanUrl);
+  });
+  
+  // 提取第一张图片（如果有）
+  let firstImage = '';
+  const imgMatch = processedContent.match(/<img[^>]+>/);
+  if (imgMatch) {
+    firstImage = imgMatch[0];
+  }
+  
+  // 提取纯文本内容
+  const textWithoutTags = processedContent.replace(/<[^>]+>/g, ' ').trim();
+  let truncatedText = truncateContent(textWithoutTags, 150);
+  
+  // 返回图片和截断的文本
+  if (firstImage) {
+    return `${firstImage}<div class="preview-text">${truncatedText}</div>`;
+  } else {
+    return `<div class="preview-text">${truncatedText}</div>`;
+  }
 };
 
 // 获取公告列表
@@ -185,11 +223,30 @@ const fetchAnnouncements = async () => {
     }
 
     const response = await announcementAPI.getAnnouncements(params);
-    announcements.value = response.content;
-    total.value = response.totalElements;
+    
+    // 验证并处理公告数据
+    if (response && response.content && Array.isArray(response.content)) {
+      announcements.value = response.content.map(announcement => {
+        // 处理可能为null或undefined的字段
+        return {
+          ...announcement,
+          title: announcement.title || '无标题',
+          content: announcement.content || '无内容',
+          createdAt: announcement.createdAt || '',
+          createdBy: announcement.createdBy || '系统'
+        };
+      });
+      total.value = response.totalElements || 0;
+    } else {
+      announcements.value = [];
+      total.value = 0;
+      console.warn('公告数据格式异常:', response);
+    }
   } catch (error) {
     console.error('获取公告失败:', error);
     ElMessage.error('获取公告列表失败，请稍后重试');
+    announcements.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -197,7 +254,32 @@ const fetchAnnouncements = async () => {
 
 // 打开公告详情
 const openAnnouncement = (announcement: Announcement) => {
-  currentAnnouncement.value = announcement;
+  // 处理内容中的图片URL，确保使用正确的路径格式
+  let processedContent = announcement.content || '';
+  if (processedContent) {
+    // 查找所有图片URL，确保路径正确
+    const imgRegex = /<img[^>]+src="([^"]+)"/g;
+    processedContent = processedContent.replace(imgRegex, (match, url) => {
+      // 移除URL中可能存在的token参数
+      let cleanUrl = url.split('?')[0];
+      
+      // 确保图片URL包含/api前缀
+      if (cleanUrl.includes('/files/download/') && !cleanUrl.startsWith('/api')) {
+        cleanUrl = `/api${cleanUrl}`;
+      }
+      
+      return match.replace(url, cleanUrl);
+    });
+  }
+
+  // 确保公告对象完整
+  currentAnnouncement.value = {
+    ...announcement,
+    title: announcement.title || '无标题',
+    content: processedContent || announcement.content,
+    createdAt: announcement.createdAt || '',
+    createdBy: announcement.createdBy || '系统'
+  };
   dialogVisible.value = true;
 };
 
@@ -303,6 +385,22 @@ onMounted(() => {
   color: #606266;
   line-height: 1.5;
   margin-bottom: 10px;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.announcement-content-preview .preview-text {
+  margin-top: 8px;
+}
+
+/* 确保列表中的图片能正常显示 */
+.announcement-content-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .announcement-footer {
@@ -337,6 +435,15 @@ onMounted(() => {
   font-size: 15px;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+/* 确保图片在查看时正常显示 */
+.announcement-full-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .loading-container {

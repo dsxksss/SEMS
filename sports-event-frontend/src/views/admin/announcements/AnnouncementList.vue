@@ -444,14 +444,20 @@ const handleView = async (row: Announcement) => {
     // 调用API获取详细信息
     const announcement = await announcementAPI.getAnnouncementById(row.id);
     
-    // 处理内容中的图片URL，移除可能存在的token参数
+    // 处理内容中的图片URL，确保使用正确的路径格式
     let processedContent = announcement.content;
     if (processedContent) {
-      // 查找所有图片URL，确保没有token参数
+      // 查找所有图片URL，确保路径正确
       const imgRegex = /<img[^>]+src="([^"]+)"/g;
       processedContent = processedContent.replace(imgRegex, (match, url) => {
         // 移除URL中可能存在的token参数
-        const cleanUrl = url.split('?')[0];
+        let cleanUrl = url.split('?')[0];
+        
+        // 确保图片URL包含/api前缀
+        if (cleanUrl.includes('/files/download/') && !cleanUrl.startsWith('/api')) {
+          cleanUrl = `/api${cleanUrl}`;
+        }
+        
         return match.replace(url, cleanUrl);
       });
     }
@@ -691,6 +697,7 @@ const handleImageSuccess = (response: any, file: any) => {
   if (response && response.data) {
     imageUrl = response.data;
   } else if (response && response.filename) {
+    // 确保使用完整的URL路径，包含/api前缀
     imageUrl = `/api/files/download/${response.filename}`;
   } else if (response && response.id) {
     imageUrl = `/api/files/download/${response.id}`;

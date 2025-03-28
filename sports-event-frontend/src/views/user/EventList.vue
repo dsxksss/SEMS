@@ -123,10 +123,11 @@ import { ref, onMounted, watch } from 'vue';
 import { eventsAPI } from '../../api/eventsAPI';
 import { categoryAPI } from '../../api/categoryAPI';
 import { Search, Location, Timer, Calendar, User } from '@element-plus/icons-vue';
-import type { EventCategory } from '../../api/eventsAPI';
+import type { EventCategory } from '../../api/types';
+import type { Event } from '../../api/eventsAPI';
 
 // 状态数据
-const events = ref<any[]>([]);
+const events = ref<Event[]>([]);
 const categories = ref<EventCategory[]>([]);
 const loading = ref(true);
 const currentPage = ref(1);
@@ -211,7 +212,7 @@ const fetchEvents = async () => {
 // 获取分类列表
 const fetchCategories = async () => {
   try {
-    const response = await categoryAPI.getAllActiveCategories();
+    const response = await categoryAPI.getPublicCategories();
     categories.value = response;
   } catch (error) {
     console.error('获取分类列表失败:', error);
