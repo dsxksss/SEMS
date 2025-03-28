@@ -179,8 +179,8 @@
         </el-form-item>
         <el-form-item label="性别" prop="gender">
           <el-radio-group v-model="participantForm.gender">
-            <el-radio label="MALE">男</el-radio>
-            <el-radio label="FEMALE">女</el-radio>
+            <el-radio :label="'MALE'" value="MALE">男</el-radio>
+            <el-radio :label="'FEMALE'" value="FEMALE">女</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="联系电话" prop="phoneNumber">
@@ -219,8 +219,8 @@
         </el-form-item>
         <el-form-item label="性别" prop="gender">
           <el-radio-group v-model="addForm.gender">
-            <el-radio label="MALE">男</el-radio>
-            <el-radio label="FEMALE">女</el-radio>
+            <el-radio :label="'MALE'" value="MALE">男</el-radio>
+            <el-radio :label="'FEMALE'" value="FEMALE">女</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="联系电话" prop="phoneNumber">

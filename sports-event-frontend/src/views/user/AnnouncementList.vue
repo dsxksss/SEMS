@@ -1,97 +1,139 @@
 <template>
-  <div class="announcement-list-container">
-    <div class="page-header">
-      <h2>公告列表</h2>
-      <div class="header-actions">
+  <div>
+    <!-- 页面标题和搜索栏 -->
+    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+      <h1 class="text-2xl font-bold text-gray-800">公告列表</h1>
+      <div class="flex gap-2">
         <el-input
           v-model="searchQuery"
           placeholder="搜索公告"
-          prefix-icon="Search"
+          class="min-w-[200px]"
           clearable
           @clear="fetchAnnouncements"
           @keyup.enter="fetchAnnouncements"
-        />
-        <el-button type="primary" @click="fetchAnnouncements">
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <button 
+          class="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+          @click="fetchAnnouncements"
+        >
           <el-icon><Search /></el-icon> 搜索
-        </el-button>
+        </button>
       </div>
     </div>
 
-    <el-card class="announcement-list-card">
-      <template #header>
-        <div class="card-header">
-          <div class="title-section">
-            <el-icon><Bell /></el-icon>
-            <span>系统公告</span>
-          </div>
-          <el-radio-group v-model="timeFilter" @change="fetchAnnouncements" size="small">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="week">本周</el-radio-button>
-            <el-radio-button label="month">本月</el-radio-button>
-          </el-radio-group>
+    <!-- 公告列表卡片 -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+      <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+        <div class="flex items-center gap-2 text-gray-800 font-medium">
+          <el-icon class="text-indigo-500" :size="20"><Bell /></el-icon>
+          <span>系统公告</span>
         </div>
-      </template>
+        <el-radio-group 
+          v-model="timeFilter" 
+          @change="fetchAnnouncements" 
+          size="small"
+        >
+          <el-radio-button label="all">全部</el-radio-button>
+          <el-radio-button label="week">本周</el-radio-button>
+          <el-radio-button label="month">本月</el-radio-button>
+        </el-radio-group>
+      </div>
 
-      <div v-if="loading" class="loading-container">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="py-10 px-6">
         <el-skeleton :rows="10" animated />
       </div>
 
-      <el-empty v-else-if="announcements.length === 0" description="暂无公告" />
+      <!-- 空状态 -->
+      <div v-else-if="announcements.length === 0" class="py-16 flex justify-center">
+        <el-empty description="暂无公告" />
+      </div>
 
-      <template v-else>
-        <div class="announcement-item" v-for="announcement in announcements" :key="announcement.id" @click="openAnnouncement(announcement)">
-          <div class="item-header">
-            <div class="title-wrapper">
-              <h3 class="announcement-title">{{ announcement.title }}</h3>
-              <el-tag v-if="isNew(announcement.createdAt)" size="small" type="danger">新</el-tag>
+      <!-- 公告列表 -->
+      <div v-else>
+        <div 
+          v-for="announcement in announcements" 
+          :key="announcement.id" 
+          class="border-b border-gray-100 last:border-b-0 px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+          @click="openAnnouncement(announcement)"
+        >
+          <div class="flex justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-medium text-gray-800">{{ announcement.title }}</h3>
+              <el-tag 
+                v-if="isNew(announcement.createdAt)" 
+                size="small" 
+                type="danger"
+                class="!rounded-full"
+              >新</el-tag>
             </div>
-            <span class="announcement-date">{{ formatDateTime(announcement.createdAt) }}</span>
+            <span class="text-sm text-gray-500">{{ formatDateTime(announcement.createdAt) }}</span>
           </div>
-          <div class="announcement-content-preview" v-html="processContentForPreview(announcement.content)"></div>
-          <div class="announcement-footer">
-            <span class="publisher">发布者：{{ getPublisherName(announcement.createdBy) }}</span>
-            <el-button link type="primary" size="small">阅读全文</el-button>
+          <div 
+            class="text-gray-600 mb-3 text-sm line-clamp-3"
+            v-html="processContentForPreview(announcement.content)"
+          ></div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-500">发布者：{{ getPublisherName(announcement.createdBy) }}</span>
+            <button 
+              class="text-indigo-600 font-medium hover:text-indigo-800 transition-colors focus:outline-none text-sm" 
+            >
+              阅读全文
+            </button>
           </div>
         </div>
-      </template>
-    </el-card>
+      </div>
+    </div>
 
-    <div class="pagination-container">
+    <!-- 分页 -->
+    <div class="flex justify-center mt-8">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :page-sizes="[10, 20, 30, 50]"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
+        background
+        class="pagination-with-bg"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       />
     </div>
 
+    <!-- 公告详情弹窗 -->
     <el-dialog
       v-model="dialogVisible"
       :title="currentAnnouncement.title"
       width="60%"
-      class="announcement-dialog"
+      destroy-on-close
     >
-      <div class="announcement-meta">
+      <div class="flex justify-between text-sm text-gray-500 pb-4 mb-6 border-b border-gray-200">
         <span>发布时间：{{ formatDateTime(currentAnnouncement.createdAt) }}</span>
         <span>发布者：{{ getPublisherName(currentAnnouncement.createdBy) }}</span>
       </div>
-      <div class="announcement-full-content" v-html="currentAnnouncement.content"></div>
+      <div class="prose max-w-none" v-html="currentAnnouncement.content"></div>
       <template #footer>
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        <button 
+          @click="dialogVisible = false"
+          class="px-4 py-2 bg-white text-gray-700 font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-opacity-50"
+        >
+          关闭
+        </button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Bell, Search } from '@element-plus/icons-vue';
 import { announcementAPI, type Announcement } from '../../api/announcementAPI';
-import { formatDateTime, getRelativeTime } from '../../utils/formatter';
+import { formatDateTime } from '../../utils/formatter';
 
 // 数据
 const announcements = ref<Announcement[]>([]);
@@ -184,9 +226,9 @@ const processContentForPreview = (content: string) => {
   
   // 返回图片和截断的文本
   if (firstImage) {
-    return `${firstImage}<div class="preview-text">${truncatedText}</div>`;
+    return `${firstImage}<div class="mt-2">${truncatedText}</div>`;
   } else {
-    return `<div class="preview-text">${truncatedText}</div>`;
+    return `<div>${truncatedText}</div>`;
   }
 };
 
@@ -301,152 +343,54 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.announcement-list-container {
-  padding: 20px;
+:deep(.pagination-with-bg .el-pager li.is-active) {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+:deep(.pagination-with-bg .el-pager li:hover:not(.is-active)) {
+  color: #4f46e5;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  color: #333;
+:deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 
-.header-actions {
-  display: flex;
-  gap: 10px;
+:deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+  box-shadow: -1px 0 0 0 #4f46e5 !important;
 }
 
-.announcement-list-card {
-  margin-bottom: 20px;
+:deep(.el-radio-button__inner:hover) {
+  color: #4f46e5;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+:deep(.prose) {
+  line-height: 1.7;
+  color: #374151;
 }
 
-.title-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
+:deep(.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6) {
+  margin-top: 1.25em;
+  margin-bottom: 0.75em;
   font-weight: 600;
+  color: #111827;
 }
 
-.announcement-item {
-  padding: 16px;
-  border-bottom: 1px solid #ebeef5;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+:deep(.prose p) {
+  margin-bottom: 1.25em;
 }
 
-.announcement-item:last-child {
-  border-bottom: none;
-}
-
-.announcement-item:hover {
-  background-color: #f5f7fa;
-}
-
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.title-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.announcement-title {
-  margin: 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-.announcement-date {
-  font-size: 13px;
-  color: #909399;
-}
-
-.announcement-content-preview {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.5;
-  margin-bottom: 10px;
-  max-height: 300px;
+:deep(.line-clamp-3) {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.announcement-content-preview .preview-text {
-  margin-top: 8px;
-}
-
-/* 确保列表中的图片能正常显示 */
-.announcement-content-preview img {
-  max-width: 100%;
-  max-height: 200px;
-  height: auto;
-  margin: 10px 0;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.announcement-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-}
-
-.publisher {
-  color: #909399;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.announcement-meta {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #EBEEF5;
-  margin-bottom: 15px;
-  color: #909399;
-  font-size: 14px;
-}
-
-.announcement-full-content {
-  padding: 10px 0;
-  font-size: 15px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-/* 确保图片在查看时正常显示 */
-.announcement-full-content img {
-  max-width: 100%;
-  height: auto;
-  margin: 10px 0;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.loading-container {
-  padding: 20px 0;
 }
 </style> 

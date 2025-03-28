@@ -67,6 +67,49 @@ export const userAPI = {
     return response.data;
   },
 
+  // 获取所有用户（管理员接口）
+  getAllUsers: async (): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/users');
+      return response.data;
+    } catch (error) {
+      console.error('获取所有用户失败', error);
+      // 添加重试逻辑
+      try {
+        console.log('尝试重新获取用户列表...');
+        const retryResponse = await apiClient.get('/users');
+        return retryResponse.data;
+      } catch (retryError) {
+        console.error('重试获取用户列表失败', retryError);
+        return [];
+      }
+    }
+  },
+
+  // 创建用户（管理员接口）
+  createUser: async (userData: any): Promise<any> => {
+    const response = await apiClient.post('/users', userData);
+    return response.data;
+  },
+
+  // 更新用户（管理员接口）
+  updateUser: async (userId: number, userData: any): Promise<any> => {
+    const response = await apiClient.put(`/users/${userId}`, userData);
+    return response.data;
+  },
+
+  // 删除用户（管理员接口）
+  deleteUser: async (userId: number): Promise<any> => {
+    const response = await apiClient.delete(`/users/${userId}`);
+    return response.data;
+  },
+
+  // 切换用户状态（管理员接口）
+  toggleUserStatus: async (userId: number, enabled: boolean): Promise<any> => {
+    const response = await apiClient.put(`/users/${userId}/status`, { enabled });
+    return response.data;
+  },
+
   // 修改密码
   changePassword: async (currentPassword: string, newPassword: string): Promise<any> => {
     const response = await apiClient.put('/users/me/password', {

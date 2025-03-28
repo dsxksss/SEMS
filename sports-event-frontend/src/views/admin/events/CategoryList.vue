@@ -82,8 +82,8 @@
         </el-form-item>
         <el-form-item label="状态" prop="isActive">
           <el-radio-group v-model="categoryForm.isActive">
-            <el-radio :label="true">启用</el-radio>
-            <el-radio :label="false">禁用</el-radio>
+            <el-radio :label="true" :value="true">启用</el-radio>
+            <el-radio :label="false" :value="false">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>

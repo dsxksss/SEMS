@@ -174,10 +174,11 @@
             />
             <div class="editor-tools">
               <el-upload
-                action="/api/files/upload"
-                :headers="{ Authorization: `Bearer ${authStore.token}` }"
+                :action="null"
+                :http-request="handleHttpUpload"
                 :show-file-list="false"
                 :on-success="handleImageSuccess"
+                :on-error="handleImageError"
                 :before-upload="beforeImageUpload"
                 :accept="'image/jpeg,image/png,image/gif'"
               >
@@ -194,8 +195,8 @@
         
         <el-form-item label="发布状态" prop="status">
           <el-radio-group v-model="announcementForm.status">
-            <el-radio label="PUBLISHED">立即发布</el-radio>
-            <el-radio label="DRAFT">保存草稿</el-radio>
+            <el-radio :label="'PUBLISHED'" value="PUBLISHED">立即发布</el-radio>
+            <el-radio :label="'DRAFT'" value="DRAFT">保存草稿</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -716,6 +717,48 @@ const handleImageSuccess = (response: any, file: any) => {
   } else {
     ElMessage.error('图片上传失败，请重试');
     console.error('无效的响应格式:', response);
+  }
+};
+
+// 处理图片上传错误
+const handleImageError = (error: any) => {
+  console.error('图片上传失败:', error);
+  ElMessage.error('图片上传失败，请检查网络连接或重新登录后再试');
+};
+
+// 自定义HTTP上传请求
+const handleHttpUpload = async (options: any) => {
+  try {
+    const file = options.file;
+    // 创建FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 使用axios直接请求，确保带上token
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录信息已过期，请重新登录');
+        setTimeout(() => {
+          authStore.logout();
+        }, 1000);
+        return options.onError(new Error('未授权'));
+      }
+      throw new Error(`上传失败: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    options.onSuccess(result);
+  } catch (error) {
+    console.error('上传处理错误:', error);
+    options.onError(error);
   }
 };
 

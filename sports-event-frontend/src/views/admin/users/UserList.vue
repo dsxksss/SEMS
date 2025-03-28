@@ -138,8 +138,8 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="userForm.status" id="status">
-            <el-radio label="active">激活</el-radio>
-            <el-radio label="disabled">禁用</el-radio>
+            <el-radio :label="'active'" value="active">激活</el-radio>
+            <el-radio :label="'disabled'" value="disabled">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -232,52 +232,80 @@ const fetchAllRoles = async () => {
 };
 
 // 获取用户列表
-const fetchUserList = async () => {
+const fetchUserList = async (retryCount = 0) => {
   loading.value = true;
   try {
     // 调用API获取用户列表
     const response = await userAPI.getAllUsers();
     
+    if (!response || response.length === 0) {
+      console.warn('获取用户列表成功，但数据为空');
+      userList.value = [];
+      total.value = 0;
+      loading.value = false;
+      return;
+    }
+    
     // 处理数据，将后端的enabled映射为前端的status
     const processedUsers = response.map(user => {
-      // 统一角色格式为字符串数组
-      const roles = user.roles.map(role => {
-        if (typeof role === 'object' && role !== null && role.name) {
-          return role.name;
-        }
-        return role as string;
-      });
-      
-      return {
-        ...user,
-        roles,
-        status: user.enabled ? 'active' : 'disabled'
-      };
+      try {
+        // 统一角色格式为字符串数组
+        const roles = Array.isArray(user.roles) 
+          ? user.roles.map(role => {
+              if (typeof role === 'object' && role !== null && role.name) {
+                return role.name;
+              }
+              return role as string;
+            })
+          : [user.role || 'ROLE_USER']; // 如果没有roles数组，使用单个role或默认角色
+        
+        return {
+          ...user,
+          roles,
+          status: user.enabled !== undefined ? (user.enabled ? 'active' : 'disabled') : 'active'
+        };
+      } catch (err) {
+        console.error('处理用户数据出错:', user, err);
+        // 返回一个带有基本信息的对象，避免界面崩溃
+        return {
+          id: user.id || 0,
+          username: user.username || '未知用户',
+          email: user.email || '',
+          roles: ['ROLE_USER'],
+          status: 'active',
+          createdAt: user.createdAt || new Date().toISOString()
+        };
+      }
     });
     
     // 处理筛选
     let filteredUsers = processedUsers.filter(user => {
       let matches = true;
-      // 用户名筛选，不区分大小写
-      if (filterForm.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
-        matches = false;
-      }
-      
-      // 角色筛选
-      if (filterForm.role) {
-        const hasRole = user.roles.some(role => {
-          // 使用完全匹配，因为角色值可能是完整的ROLE_XX格式
-          return role === filterForm.role;
-        });
-        
-        if (!hasRole) {
+      try {
+        // 用户名筛选，不区分大小写
+        if (filterForm.username && user.username && !user.username.toLowerCase().includes(filterForm.username.toLowerCase())) {
           matches = false;
         }
-      }
-      
-      // 状态筛选
-      if (filterForm.status && user.status !== filterForm.status) {
-        matches = false;
+        
+        // 角色筛选
+        if (filterForm.role && Array.isArray(user.roles)) {
+          const hasRole = user.roles.some(role => {
+            // 使用完全匹配，因为角色值可能是完整的ROLE_XX格式
+            return role === filterForm.role;
+          });
+          
+          if (!hasRole) {
+            matches = false;
+          }
+        }
+        
+        // 状态筛选
+        if (filterForm.status && user.status !== filterForm.status) {
+          matches = false;
+        }
+      } catch (err) {
+        console.error('过滤用户数据出错:', user, err);
+        return true; // 出错时默认显示
       }
       return matches;
     });
@@ -295,9 +323,23 @@ const fetchUserList = async () => {
     
   } catch (error) {
     console.error('获取用户列表失败', error);
+    
+    // 重试逻辑
+    if (retryCount < 2) {
+      console.log(`正在重试获取用户列表(${retryCount + 1}/2)...`);
+      setTimeout(() => {
+        fetchUserList(retryCount + 1);
+      }, 1000);
+      return;
+    }
+    
     ElMessage.error('获取用户列表失败，请刷新重试');
+    userList.value = [];
+    total.value = 0;
   } finally {
-    loading.value = false;
+    if (retryCount >= 2 || userList.value.length > 0) {
+      loading.value = false;
+    }
   }
 };
 

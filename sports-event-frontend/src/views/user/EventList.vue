@@ -1,20 +1,25 @@
 <template>
-  <div class="event-list-container">
-    <div class="page-header">
-      <h1>赛事列表</h1>
-      <div class="search-filter">
+  <div>
+    <!-- 页面标题和搜索筛选 -->
+    <div class="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <h1 class="text-2xl font-bold text-gray-800">赛事列表</h1>
+      
+      <div class="flex flex-wrap gap-3">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索赛事名称"
-          class="search-input"
+          class="min-w-[240px]"
           clearable
           @clear="resetSearch"
           @keyup.enter="searchEvents"
         >
           <template #append>
-            <el-button @click="searchEvents">
+            <button 
+              class="h-full px-3 py-0 bg-indigo-600 text-white border border-indigo-600 hover:bg-indigo-700 transition-colors"
+              @click="searchEvents"
+            >
               <el-icon><Search /></el-icon>
-            </el-button>
+            </button>
           </template>
         </el-input>
         
@@ -23,7 +28,7 @@
           placeholder="赛事分类" 
           clearable 
           @change="handleCategoryChange"
-          class="category-filter"
+          class="min-w-[140px]"
         >
           <el-option
             v-for="category in categories"
@@ -38,7 +43,7 @@
           placeholder="赛事状态" 
           clearable 
           @change="handleStatusChange"
-          class="status-filter"
+          class="min-w-[140px]"
         >
           <el-option
             v-for="status in statusOptions"
@@ -50,67 +55,93 @@
       </div>
     </div>
     
-    <div v-if="loading" class="loading-container">
+    <!-- 加载状态 -->
+    <div v-if="loading" class="py-10 text-center">
       <el-skeleton :rows="5" animated />
     </div>
     
-    <div v-else-if="events.length === 0" class="empty-container">
+    <!-- 空状态 -->
+    <div v-else-if="events.length === 0" class="py-16 flex justify-center">
       <el-empty description="未找到符合条件的赛事" />
     </div>
     
-    <div v-else class="events-grid">
-      <el-card 
+    <!-- 赛事卡片网格 -->
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div 
         v-for="event in events" 
         :key="event.id" 
-        class="event-card"
-        shadow="hover"
+        class="bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1 transform"
       >
-        <div class="event-card-content">
-          <div class="event-status">
-            <el-tag :type="getStatusType(event.status)">{{ getStatusText(event.status) }}</el-tag>
+        <div class="p-5 flex flex-col h-full relative">
+          <!-- 状态标签 -->
+          <div class="absolute top-5 right-5">
+            <el-tag 
+              :type="getStatusType(event.status)" 
+              class="!rounded-full"
+            >
+              {{ getStatusText(event.status) }}
+            </el-tag>
           </div>
-          <h3 class="event-title">{{ event.name }}</h3>
-          <p class="event-description">{{ truncateText(event.description, 100) }}</p>
           
-          <div class="event-details">
-            <div class="event-detail-item">
-              <el-icon><Location /></el-icon>
+          <!-- 赛事分类 -->
+          <div class="mb-4">
+            <el-tag 
+              size="small" 
+              type="info" 
+              class="!bg-indigo-100 !text-indigo-800 !border-none !rounded-full"
+            >
+              {{ event.category.name }}
+            </el-tag>
+          </div>
+          
+          <!-- 赛事名称和描述 -->
+          <h3 class="text-xl font-medium text-gray-800 mb-3 mt-2">{{ event.name }}</h3>
+          <p class="text-gray-600 mb-5 flex-grow">{{ truncateText(event.description, 100) }}</p>
+          
+          <!-- 赛事详情 -->
+          <div class="space-y-2 mb-6 border-t border-gray-100 pt-4">
+            <div class="flex items-center text-gray-600">
+              <el-icon class="mr-2 text-indigo-500"><Location /></el-icon>
               <span>{{ event.location }}</span>
             </div>
-            <div class="event-detail-item">
-              <el-icon><Timer /></el-icon>
+            <div class="flex items-center text-gray-600">
+              <el-icon class="mr-2 text-indigo-500"><Timer /></el-icon>
               <span>{{ formatDate(event.startTime) }}</span>
             </div>
-            <div class="event-detail-item">
-              <el-icon><Calendar /></el-icon>
+            <div class="flex items-center text-gray-600">
+              <el-icon class="mr-2 text-indigo-500"><Calendar /></el-icon>
               <span>报名截止: {{ formatDate(event.registrationDeadline) }}</span>
             </div>
-            <div class="event-detail-item">
-              <el-icon><User /></el-icon>
+            <div class="flex items-center text-gray-600">
+              <el-icon class="mr-2 text-indigo-500"><User /></el-icon>
               <span>人数上限: {{ event.maxParticipants }}人</span>
             </div>
           </div>
           
-          <div class="event-category">
-            <el-tag size="small" type="info">{{ event.category.name }}</el-tag>
-          </div>
-          
-          <div class="event-actions">
+          <!-- 赛事操作 -->
+          <div class="flex justify-end">
             <router-link :to="`/user/events/${event.id}`">
-              <el-button type="primary">查看详情</el-button>
+              <button 
+                class="px-5 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-full shadow-sm hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+              >
+                查看详情
+              </button>
             </router-link>
           </div>
         </div>
-      </el-card>
+      </div>
     </div>
     
-    <div class="pagination-container">
+    <!-- 分页 -->
+    <div class="flex justify-center mt-8">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :page-sizes="[10, 20, 30, 50]"
         layout="total, sizes, prev, pager, next, jumper"
         :total="totalElements"
+        background
+        class="pagination-with-bg"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       />
@@ -302,131 +333,25 @@ const getStatusText = (status: string) => {
 </script>
 
 <style scoped>
-.event-list-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+:deep(.pagination-with-bg .el-pager li.is-active) {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
 }
 
-.page-header {
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+:deep(.pagination-with-bg .el-pager li:hover:not(.is-active)) {
+  color: #4f46e5;
 }
 
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #333;
+:deep(.el-input__wrapper) {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-.search-filter {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  max-width: 700px;
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
 }
 
-.search-input {
-  min-width: 250px;
-}
-
-.category-filter, .status-filter {
-  min-width: 150px;
-}
-
-.events-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.event-card {
-  height: 100%;
-  transition: transform 0.2s;
-}
-
-.event-card:hover {
-  transform: translateY(-5px);
-}
-
-.event-card-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.event-status {
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-
-.event-title {
-  margin-top: 24px;
-  margin-bottom: 10px;
-  font-size: 18px;
-}
-
-.event-description {
-  color: #666;
-  margin-bottom: 16px;
-  flex-grow: 1;
-}
-
-.event-details {
-  margin-bottom: 16px;
-}
-
-.event-detail-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  color: #666;
-}
-
-.event-detail-item .el-icon {
-  margin-right: 8px;
-  color: #409EFF;
-}
-
-.event-category {
-  margin-bottom: 16px;
-}
-
-.event-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.loading-container, .empty-container {
-  padding: 40px 0;
-  text-align: center;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .search-filter {
-    margin-top: 16px;
-    width: 100%;
-  }
-  
-  .events-grid {
-    grid-template-columns: 1fr;
-  }
+:deep(.el-input__wrapper:focus-within) {
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
 }
 </style> 

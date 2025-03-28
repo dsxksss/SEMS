@@ -1,194 +1,250 @@
 <template>
-  <div class="dashboard-container">
+  <div>
     <!-- Hero 部分 -->
-    <div class="hero-section">
-      <div class="hero-content">
-        <h1>欢迎使用体育赛事管理系统</h1>
-        <p class="subtitle">探索精彩赛事，展现运动魅力</p>
-        <div class="hero-actions">
-          <el-button type="primary" size="large" @click="router.push('/user/events')">浏览赛事</el-button>
-          <el-button size="large" @click="router.push('/user/registrations')">查看我的报名</el-button>
-        </div>
+    <div class="relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 mb-8">
+      <div class="absolute inset-0 bg-indigo-500 opacity-20 z-0">
+        <svg class="absolute right-0 top-0 h-full w-1/2 transform opacity-20" viewBox="0 0 926 676" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M899.324 118.231C899.324 118.231 808.516 240.644 592.822 173.839C377.128 107.035 291.454 238.502 189.345 255.402C87.2353 272.302 16.4826 302.898 0.788086 319.798" stroke="white" stroke-width="36" stroke-linecap="round"/>
+          <path d="M848.17 263.724C848.17 263.724 736.2 424.497 501.111 324.638C266.021 224.779 225.095 338.359 140.317 358.066C55.5393 377.774 12.1462 409.056 0.78125 403.22" stroke="white" stroke-width="36" stroke-linecap="round"/>
+          <path d="M925.217 407.705C925.217 407.705 727.963 553.959 475.782 468.769C223.602 383.579 181.225 547.632 87.2343 578.233C-6.75661 608.835 -1.60657 665.235 -1.60657 665.235" stroke="white" stroke-width="36" stroke-linecap="round"/>
+        </svg>
       </div>
-      <div class="hero-image">
-        <img src="https://img.freepik.com/free-vector/gradient-national-sports-day-illustration_23-2149590146.jpg" alt="体育赛事插图">
+      <div class="relative z-10 px-8 py-16 flex flex-col md:flex-row items-center justify-between">
+        <div class="text-center md:text-left md:max-w-lg">
+          <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">欢迎使用体育赛事管理系统</h1>
+          <p class="text-lg text-indigo-100 mb-8">探索精彩赛事，展现运动魅力</p>
+          <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+            <button 
+              class="px-6 py-2.5 bg-white text-indigo-600 font-medium rounded-lg shadow-sm hover:bg-indigo-50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+              @click="router.push('/user/events')"
+            >
+              浏览赛事
+            </button>
+            <button 
+              class="px-6 py-2.5 bg-transparent text-white font-medium rounded-lg border border-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+              @click="router.push('/user/registrations')"
+            >
+              查看我的报名
+            </button>
+          </div>
+        </div>
+        <div class="mt-8 md:mt-0">
+          <img 
+            src="https://img.freepik.com/free-vector/gradient-national-sports-day-illustration_23-2149590146.jpg" 
+            alt="体育赛事插图" 
+            class="max-w-full md:max-w-sm rounded-lg shadow-lg"
+          >
+        </div>
       </div>
     </div>
 
     <!-- 统计卡片 -->
-    <div class="stats-section">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
-          <el-card class="stats-card" shadow="hover">
-            <div class="stats-icon">
-              <el-icon :size="36" color="#409EFF"><Calendar /></el-icon>
-            </div>
-            <div class="stats-content">
-              <div class="stats-title">即将开始的赛事</div>
-              <div class="stats-value">{{ upcomingEventsCount }}</div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-card class="stats-card" shadow="hover">
-            <div class="stats-icon">
-              <el-icon :size="36" color="#67C23A"><DocumentChecked /></el-icon>
-            </div>
-            <div class="stats-content">
-              <div class="stats-title">我的报名</div>
-              <div class="stats-value">{{ registrationCount }}</div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-card class="stats-card" shadow="hover">
-            <div class="stats-icon">
-              <el-icon :size="36" color="#E6A23C"><Bell /></el-icon>
-            </div>
-            <div class="stats-content">
-              <div class="stats-title">最新公告</div>
-              <div class="stats-value">{{ announcementsCount }}</div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 mr-4 p-3 rounded-full bg-indigo-100">
+            <el-icon :size="32" class="text-indigo-600"><Calendar /></el-icon>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">即将开始的赛事</p>
+            <p class="text-2xl font-bold text-gray-800">{{ upcomingEventsCount }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 mr-4 p-3 rounded-full bg-green-100">
+            <el-icon :size="32" class="text-green-600"><DocumentChecked /></el-icon>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">我的报名</p>
+            <p class="text-2xl font-bold text-gray-800">{{ registrationCount }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 mr-4 p-3 rounded-full bg-orange-100">
+            <el-icon :size="32" class="text-orange-500"><Bell /></el-icon>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">最新公告</p>
+            <p class="text-2xl font-bold text-gray-800">{{ announcementsCount }}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 主要内容 -->
-    <div class="main-content">
-      <el-row :gutter="20">
-        <el-col :xs="24" :md="16">
-          <el-card class="upcoming-events">
-            <template #header>
-              <div class="card-header">
-                <h3>即将开始的赛事</h3>
-                <el-button text type="primary" @click="router.push('/user/events')">查看全部</el-button>
-              </div>
-            </template>
-            <div v-if="loadingEvents" class="loading-placeholder">
-              <el-skeleton :rows="3" animated />
-            </div>
-            <div v-else-if="upcomingEvents.length === 0" class="empty-data">
-              <el-empty description="暂无即将开始的赛事" />
-            </div>
-            <div v-else class="event-list">
-              <el-table :data="upcomingEvents" style="width: 100%" :show-header="false" size="large">
-                <el-table-column>
-                  <template #default="scope">
-                    <div class="event-item">
-                      <div class="event-meta">
-                        <h4 class="event-name">{{ scope.row.name }}</h4>
-                        <div class="event-details">
-                          <span class="event-time">
-                            <el-icon><Timer /></el-icon>
-                            {{ formatDateTime(scope.row.startTime) }}
-                          </span>
-                          <span class="event-location">
-                            <el-icon><Location /></el-icon>
-                            {{ scope.row.location }}
-                          </span>
-                        </div>
-                      </div>
-                      <div class="event-action">
-                        <router-link :to="`/user/events/${scope.row.id}`">
-                          <el-button type="primary" size="small">查看详情</el-button>
-                        </router-link>
-                      </div>
-                    </div>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="24" :md="8">
-          <el-card class="announcements">
-            <template #header>
-              <div class="card-header">
-                <h3>最新公告</h3>
-                <el-button text type="primary" @click="router.push('/user/announcements')">查看全部</el-button>
-              </div>
-            </template>
-            <div v-if="loadingAnnouncements" class="loading-placeholder">
-              <el-skeleton :rows="3" animated />
-            </div>
-            <div v-else-if="latestAnnouncements.length === 0" class="empty-data">
-              <el-empty description="暂无公告" />
-            </div>
-            <div v-else class="announcement-list">
-              <div
-                v-for="(announcement, index) in latestAnnouncements"
-                :key="announcement.id"
-                class="announcement-item"
-                :delay="index * 100"
-              >
-                <div class="announcement-title">{{ announcement.title }}</div>
-                <div class="announcement-date">{{ formatDateTime(announcement.createdAt) }}</div>
-              </div>
-            </div>
-          </el-card>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="col-span-1 md:col-span-2">
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 flex justify-between items-center border-b border-gray-100">
+            <h3 class="text-lg font-medium text-gray-800">即将开始的赛事</h3>
+            <button 
+              class="text-indigo-600 font-medium hover:text-indigo-800 transition-colors focus:outline-none text-sm"
+              @click="router.push('/user/events')"
+            >
+              查看全部
+            </button>
+          </div>
           
-          <el-card class="my-registrations mt-4">
-            <template #header>
-              <div class="card-header">
-                <h3>我的报名</h3>
-                <el-button text type="primary" @click="router.push('/user/registrations')">查看全部</el-button>
+          <div v-if="loadingEvents" class="p-6">
+            <el-skeleton :rows="3" animated />
+          </div>
+          
+          <div v-else-if="upcomingEvents.length === 0" class="p-12 flex justify-center">
+            <el-empty description="暂无即将开始的赛事" />
+          </div>
+          
+          <div v-else class="divide-y divide-gray-100">
+            <div 
+              v-for="event in upcomingEvents" 
+              :key="event.id"
+              class="px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors duration-200"
+            >
+              <div>
+                <h4 class="font-medium text-gray-800 mb-1">{{ event.name }}</h4>
+                <div class="flex items-center text-sm text-gray-500 gap-4">
+                  <span class="flex items-center">
+                    <el-icon class="mr-1 text-indigo-500"><Timer /></el-icon>
+                    {{ formatDateTime(event.startTime) }}
+                  </span>
+                  <span class="flex items-center">
+                    <el-icon class="mr-1 text-indigo-500"><Location /></el-icon>
+                    {{ event.location }}
+                  </span>
+                </div>
               </div>
-            </template>
-            <div v-if="loadingRegistrations" class="loading-placeholder">
-              <el-skeleton :rows="2" animated />
+              <router-link :to="`/user/events/${event.id}`">
+                <button 
+                  class="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-full shadow-sm hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                >
+                  查看详情
+                </button>
+              </router-link>
             </div>
-            <div v-else-if="myRegistrations.length === 0" class="empty-data">
-              <el-empty description="您还没有报名任何赛事" />
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-span-1 space-y-6">
+        <!-- 最新公告 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 flex justify-between items-center border-b border-gray-100">
+            <h3 class="text-lg font-medium text-gray-800">最新公告</h3>
+            <button 
+              class="text-indigo-600 font-medium hover:text-indigo-800 transition-colors focus:outline-none text-sm"
+              @click="router.push('/user/announcements')"
+            >
+              查看全部
+            </button>
+          </div>
+          
+          <div v-if="loadingAnnouncements" class="p-6">
+            <el-skeleton :rows="3" animated />
+          </div>
+          
+          <div v-else-if="latestAnnouncements.length === 0" class="p-8 flex justify-center">
+            <el-empty description="暂无公告" />
+          </div>
+          
+          <div v-else class="divide-y divide-gray-100">
+            <div
+              v-for="announcement in latestAnnouncements"
+              :key="announcement.id"
+              class="px-6 py-4 hover:bg-gray-50 transition-colors duration-200"
+            >
+              <div class="font-medium text-gray-800 mb-1 truncate">{{ announcement.title }}</div>
+              <div class="text-xs text-gray-500">{{ formatDateTime(announcement.createdAt) }}</div>
             </div>
-            <div v-else class="registration-list">
-              <div
-                v-for="(registration, index) in myRegistrations.slice(0, 3)"
-                :key="registration.id"
-                class="registration-item"
-                :delay="index * 100"
+          </div>
+        </div>
+        
+        <!-- 我的报名 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 flex justify-between items-center border-b border-gray-100">
+            <h3 class="text-lg font-medium text-gray-800">我的报名</h3>
+            <button 
+              class="text-indigo-600 font-medium hover:text-indigo-800 transition-colors focus:outline-none text-sm"
+              @click="router.push('/user/registrations')"
+            >
+              查看全部
+            </button>
+          </div>
+          
+          <div v-if="loadingRegistrations" class="p-6">
+            <el-skeleton :rows="2" animated />
+          </div>
+          
+          <div v-else-if="myRegistrations.length === 0" class="p-8 flex justify-center">
+            <el-empty description="您还没有报名任何赛事" />
+          </div>
+          
+          <div v-else class="divide-y divide-gray-100">
+            <div
+              v-for="registration in myRegistrations.slice(0, 3)"
+              :key="registration.id"
+              class="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
+            >
+              <span class="text-gray-800 truncate max-w-[200px]">{{ registration.event.name }}</span>
+              <el-tag 
+                :type="getStatusType(registration.status)" 
+                size="small"
+                class="!rounded-full"
               >
-                <span class="registration-event">{{ registration.event.name }}</span>
-                <el-tag :type="getStatusType(registration.status)" size="small">{{ getStatusText(registration.status) }}</el-tag>
-              </div>
+                {{ getStatusText(registration.status) }}
+              </el-tag>
             </div>
-          </el-card>
-        </el-col>
-      </el-row>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 特色部分 -->
-    <div class="features-section">
-      <h2 class="section-title">系统特色</h2>
-      <div class="features-grid">
-        <el-card class="feature-card" shadow="hover">
-          <el-icon :size="40" color="#409EFF"><Calendar /></el-icon>
-          <h3>赛事管理</h3>
-          <p>浏览各类体育赛事，获取赛事详情和最新动态，参与喜爱的赛事</p>
-        </el-card>
-        <el-card class="feature-card" shadow="hover">
-          <el-icon :size="40" color="#67C23A"><DocumentChecked /></el-icon>
-          <h3>在线报名</h3>
-          <p>便捷的在线报名流程，轻松参与各类体育赛事，跟踪报名状态</p>
-        </el-card>
-        <el-card class="feature-card" shadow="hover">
-          <el-icon :size="40" color="#E6A23C"><Bell /></el-icon>
-          <h3>赛事公告</h3>
-          <p>查看赛事重要公告和通知，及时了解赛事动态和变更信息</p>
-        </el-card>
-        <el-card class="feature-card" shadow="hover">
-          <el-icon :size="40" color="#F56C6C"><User /></el-icon>
-          <h3>个人中心</h3>
-          <p>管理个人资料，查看报名历史，跟踪个人参与的赛事情况</p>
-        </el-card>
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">系统特色</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl p-6 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-shadow duration-300 hover:-translate-y-1 transform">
+          <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mb-4">
+            <el-icon :size="32" class="text-indigo-600"><Calendar /></el-icon>
+          </div>
+          <h3 class="text-lg font-medium text-gray-800 mb-2">赛事管理</h3>
+          <p class="text-gray-600">浏览各类体育赛事，获取赛事详情和最新动态，参与喜爱的赛事</p>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-shadow duration-300 hover:-translate-y-1 transform">
+          <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <el-icon :size="32" class="text-green-600"><DocumentChecked /></el-icon>
+          </div>
+          <h3 class="text-lg font-medium text-gray-800 mb-2">在线报名</h3>
+          <p class="text-gray-600">便捷的在线报名流程，轻松参与各类体育赛事，跟踪报名状态</p>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-shadow duration-300 hover:-translate-y-1 transform">
+          <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+            <el-icon :size="32" class="text-orange-500"><Bell /></el-icon>
+          </div>
+          <h3 class="text-lg font-medium text-gray-800 mb-2">赛事公告</h3>
+          <p class="text-gray-600">查看赛事重要公告和通知，及时了解赛事动态和变更信息</p>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-shadow duration-300 hover:-translate-y-1 transform">
+          <div class="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mb-4">
+            <el-icon :size="32" class="text-rose-500"><User /></el-icon>
+          </div>
+          <h3 class="text-lg font-medium text-gray-800 mb-2">个人中心</h3>
+          <p class="text-gray-600">管理个人资料，查看报名历史，跟踪个人参与的赛事情况</p>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { eventsAPI } from '../../api/eventsAPI';
 import type { Event } from '../../api/eventsAPI';
@@ -285,317 +341,4 @@ const getStatusText = (status: string) => {
     default: return status;
   }
 };
-</script>
-
-<style scoped>
-.dashboard-container {
-  padding: 0 0 40px 0;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Hero 部分 */
-.hero-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 40px 20px;
-  margin-bottom: 40px;
-  background: linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 100%);
-  border-radius: 10px;
-  overflow: hidden;
-  position: relative;
-}
-
-.hero-content {
-  flex: 1;
-  padding-right: 20px;
-  z-index: 1;
-}
-
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 16px;
-  color: #333;
-}
-
-.hero-subtitle {
-  font-size: 1.2rem;
-  margin-bottom: 24px;
-  color: #666;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.hero-image {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.hero-image img {
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* 统计卡片 */
-.stats-section {
-  margin-bottom: 40px;
-  padding: 0 20px;
-}
-
-.stats-card {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  height: 100%;
-  transition: transform 0.3s;
-}
-
-.stats-card:hover {
-  transform: translateY(-5px);
-}
-
-.stats-icon {
-  margin-right: 20px;
-  padding: 15px;
-  border-radius: 10px;
-  background-color: rgba(64, 158, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stats-content {
-  flex: 1;
-}
-
-.stats-title {
-  font-size: 16px;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.stats-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: #303133;
-}
-
-/* 主要内容 */
-.main-content {
-  margin-bottom: 40px;
-  padding: 0 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.event-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
-  transition: transform 0.3s;
-}
-
-.event-item:hover {
-  transform: translateX(5px);
-}
-
-.event-item:last-child {
-  border-bottom: none;
-}
-
-.event-name {
-  font-size: 16px;
-  margin: 0 0 5px 0;
-  font-weight: 500;
-  color: #303133;
-}
-
-.event-details {
-  display: flex;
-  color: #999;
-  font-size: 14px;
-}
-
-.event-time, .event-location {
-  display: flex;
-  align-items: center;
-  margin-right: 15px;
-}
-
-.event-time .el-icon, .event-location .el-icon {
-  margin-right: 4px;
-  color: #409EFF;
-}
-
-.announcement-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-  transition: transform 0.3s;
-}
-
-.announcement-item:hover {
-  transform: translateX(5px);
-}
-
-.announcement-item:last-child {
-  border-bottom: none;
-}
-
-.announcement-title {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #303133;
-}
-
-.announcement-date {
-  font-size: 12px;
-  color: #999;
-}
-
-.registration-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-  transition: transform 0.3s;
-}
-
-.registration-item:hover {
-  transform: translateX(5px);
-}
-
-.registration-item:last-child {
-  border-bottom: none;
-}
-
-.registration-event {
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 70%;
-  color: #303133;
-}
-
-/* 特色部分 */
-.features-section {
-  padding: 0 20px;
-}
-
-.section-title {
-  text-align: center;
-  font-size: 28px;
-  margin-bottom: 30px;
-  color: #303133;
-  position: relative;
-}
-
-.section-title::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 4px;
-  background-color: #409EFF;
-  border-radius: 2px;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.feature-card {
-  padding: 30px 20px;
-  text-align: center;
-  height: 100%;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.feature-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-}
-
-.feature-card h3 {
-  margin: 20px 0 10px;
-  font-size: 18px;
-  color: #303133;
-}
-
-.feature-card p {
-  margin: 0;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.loading-placeholder, .empty-data {
-  padding: 20px 0;
-}
-
-.mt-4 {
-  margin-top: 16px;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .hero-section {
-    flex-direction: column;
-    text-align: center;
-    padding: 30px 20px;
-  }
-
-  .hero-content {
-    padding-right: 0;
-    margin-bottom: 24px;
-  }
-
-  .hero-actions {
-    justify-content: center;
-  }
-  
-  .hero-title {
-    font-size: 2rem;
-  }
-  
-  .hero-subtitle {
-    font-size: 1rem;
-  }
-  
-  .stats-card {
-    margin-bottom: 16px;
-  }
-  
-  .upcoming-events {
-    margin-bottom: 16px;
-  }
-}
-</style> 
+</script> 
