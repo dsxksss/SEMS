@@ -215,10 +215,9 @@ html, body, #app {
 .el-menu-item.is-active {
   background-color: #1f2d3d !important;
   border-left: 4px solid #409EFF;
-  color: #ffffff !important;
+  color: rgba(0, 0, 0, 0.8) !important;
   font-weight: 500;
 }
-
 
 
 /* 子菜单标题样式 */
@@ -243,17 +242,11 @@ html, body, #app {
   border-left: 4px solid #409EFF;
 }
 
-/* 子菜单样式优化 */
-.el-menu--inline {
-  background-color: #1f2d3d !important;
-  padding: 5px 0 !important;
-}
-
 .el-menu--inline .el-menu-item {
   background-color: #1f2d3d !important;
   height: 50px !important;
   line-height: 50px !important;
-  padding-left: 48px !important; /* 子菜单缩进 */
+  padding-left: 60px !important; /* 子菜单缩进 */
   font-size: 13px !important;
   margin: 0 !important;
 }

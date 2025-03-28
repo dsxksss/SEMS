@@ -2,13 +2,13 @@
 
 /* 全局颜色变量覆盖 */
 :root {
-  --el-color-primary: #4f46e5 !important;
-  --el-color-primary-light-3: #6366f1 !important;
+  /* --el-color-primary: #4f46e5 !important; */
+  /* --el-color-primary-light-3: #6366f1 !important;
   --el-color-primary-light-5: #a5b4fc !important;
   --el-color-primary-light-7: #c7d2fe !important;
   --el-color-primary-light-8: #ddd6fe !important;
-  --el-color-primary-light-9: #ede9fe !important;
-  --el-color-primary-dark-2: #4338ca !important;
+  --el-color-primary-light-9: #ede9fe !important; */
+  /* --el-color-primary-dark-2: #4338ca !important; */
 }
 
 /* 去除Avatar组件的焦点边框 */
@@ -80,9 +80,9 @@
   color: var(--el-color-primary) !important;
 }
 
-.el-menu-item:hover {
+/* .el-menu-item:hover {
   background-color: var(--el-color-primary-light-9) !important;
-}
+} */
 
 /* 表单组件 */
 .el-radio__input.is-checked .el-radio__inner {
