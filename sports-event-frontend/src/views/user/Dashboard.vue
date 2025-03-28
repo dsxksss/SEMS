@@ -28,13 +28,6 @@
             </button>
           </div>
         </div>
-        <div class="mt-8 md:mt-0">
-          <img 
-            src="https://img.freepik.com/free-vector/gradient-national-sports-day-illustration_23-2149590146.jpg" 
-            alt="体育赛事插图" 
-            class="max-w-full md:max-w-sm rounded-lg shadow-lg"
-          >
-        </div>
       </div>
     </div>
 
