@@ -88,14 +88,70 @@ export const userAPI = {
 
   // 创建用户（管理员接口）
   createUser: async (userData: any): Promise<any> => {
-    const response = await apiClient.post('/users', userData);
+    console.log('创建用户API被调用，用户数据:', userData);
+    
+    // 转换前端的status为后端的enabled
+    const backendData = {
+      ...userData,
+      enabled: userData.status === 'active'
+    };
+    
+    // 处理角色格式
+    if (backendData.roles && Array.isArray(backendData.roles)) {
+      console.log('创建用户 - 转换角色格式前:', backendData.roles);
+    }
+    
+    delete backendData.status; // 移除前端特有的status字段
+    console.log('创建用户 - 发送到后端的数据:', backendData);
+    
+    const response = await apiClient.post('/users', backendData);
+    console.log('创建用户API响应:', response.data);
     return response.data;
   },
 
   // 更新用户（管理员接口）
   updateUser: async (userId: number, userData: any): Promise<any> => {
-    const response = await apiClient.put(`/users/${userId}`, userData);
-    return response.data;
+    console.log('更新用户API被调用，用户ID:', userId, '更新数据:', userData);
+    
+    // 转换前端的status为后端的enabled
+    const backendData = {
+      ...userData
+    };
+    
+    // 显式添加enabled字段，从status转换
+    if (userData.status) {
+      backendData.enabled = userData.status === 'active';
+      console.log('状态转换: status =', userData.status, '-> enabled =', backendData.enabled);
+      
+      // 移除前端特有的status字段
+      delete backendData.status;
+    }
+    
+    // 处理角色格式
+    if (backendData.roles && Array.isArray(backendData.roles)) {
+      console.log('角色数据原始格式:', JSON.stringify(backendData.roles));
+      
+      // 尝试转换为后端期望的角色格式 - 对象数组格式 { name: "ROLE_XXX" }
+      backendData.roles = backendData.roles.map((role: string | { name: string }) => {
+        if (typeof role === 'string') {
+          return { name: role };
+        }
+        return role; // 如果已经是对象则保留
+      });
+      
+      console.log('角色数据转换后:', JSON.stringify(backendData.roles));
+    }
+    
+    console.log('发送到后端的完整数据:', JSON.stringify(backendData));
+    
+    try {
+      const response = await apiClient.put(`/users/${userId}`, backendData);
+      console.log('更新用户API响应成功:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('更新用户API请求失败:', error);
+      throw error;
+    }
   },
 
   // 删除用户（管理员接口）

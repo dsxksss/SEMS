@@ -26,6 +26,26 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log(`请求: ${config.method?.toUpperCase()} ${config.url}，已添加Token`);
+      
+      // 尝试解析token并检查过期时间
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          const expTime = payload.exp * 1000; // 转换为毫秒
+          const nowTime = Date.now();
+          const remainingTime = expTime - nowTime;
+          
+          console.log(`Token信息 - 过期时间: ${new Date(expTime).toLocaleString()}, 当前时间: ${new Date(nowTime).toLocaleString()}`);
+          console.log(`Token剩余有效期: ${Math.floor(remainingTime / 1000 / 60)} 分钟 ${Math.floor(remainingTime / 1000 % 60)} 秒`);
+          
+          if (remainingTime <= 0) {
+            console.warn('Token已过期，但仍在使用。将尝试请求但可能会失败。');
+          }
+        }
+      } catch (e) {
+        console.error('解析Token时出错:', e);
+      }
     } else {
       console.log(`请求: ${config.method?.toUpperCase()} ${config.url}，无Token`);
     }
