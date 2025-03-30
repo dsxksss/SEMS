@@ -1,298 +1,360 @@
 <template>
-  <div class="edit-event">
-    <div class="page-header">
-      <h2>编辑赛事</h2>
-      <el-button @click="$router.push('/admin/events/list')">返回赛事列表</el-button>
+  <div class="container mx-auto px-4 py-6">
+    <div class="mb-6">
+      <el-page-header @back="goBack" title="返回赛事列表">
+        <template #content>
+          <span class="text-lg font-medium">编辑赛事</span>
+        </template>
+      </el-page-header>
     </div>
-    
-    <div v-if="loading" class="loading-container">
-      <el-skeleton style="width: 100%" :rows="10" animated />
+
+    <!-- 加载状态 -->
+    <div v-if="loading" class="py-10 text-center">
+      <el-spinner size="large" />
     </div>
-    
-    <div v-else class="event-form-container">
-      <el-form 
-        ref="eventFormRef"
-        :model="eventForm"
-        :rules="rules"
-        label-width="120px"
-        label-position="right"
-        class="event-form"
-      >
-        <el-form-item label="赛事名称" prop="name">
-          <el-input v-model="eventForm.name" placeholder="请输入赛事名称" />
-        </el-form-item>
-        
-        <el-form-item label="赛事分类" prop="categoryId">
-          <el-select v-model="eventForm.categoryId" placeholder="请选择赛事分类" style="width: 100%">
-            <el-option
-              v-for="category in categories"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
-            />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="赛事日期" prop="eventDates">
-          <el-date-picker
-            v-model="eventForm.eventDates"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 100%"
-          />
-        </el-form-item>
-        
-        <el-form-item label="报名时间" prop="registrationDates">
-          <el-date-picker
-            v-model="eventForm.registrationDates"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 100%"
-          />
-        </el-form-item>
-        
-        <el-form-item label="比赛地点" prop="location">
-          <el-input v-model="eventForm.location" placeholder="请输入比赛地点" />
-        </el-form-item>
-        
-        <el-form-item label="主办方" prop="organizer">
-          <el-input v-model="eventForm.organizer" placeholder="请输入主办方" />
-        </el-form-item>
-        
-        <el-form-item label="最大参与人数" prop="maxParticipants">
-          <el-input-number 
-            v-model="eventForm.maxParticipants" 
-            :min="1" 
-            :max="10000" 
-            :step="1"
-            style="width: 100%"
-          />
-        </el-form-item>
-        
-        <el-form-item label="赛事描述" prop="description">
-          <el-input
-            v-model="eventForm.description"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入赛事详细描述，包括赛事规则、奖励等信息"
-          />
-        </el-form-item>
-        
-        <el-form-item>
+
+    <!-- 错误提示 -->
+    <el-alert
+      v-if="error"
+      type="error"
+      :title="error"
+      show-icon
+      class="mb-4"
+      :closable="true"
+    />
+
+    <!-- 赛事表单 -->
+    <el-form
+      v-if="!loading && eventLoaded"
+      ref="formRef"
+      :model="eventForm"
+      :rules="rules"
+      label-width="120px"
+      label-position="top"
+      class="max-w-3xl mx-auto"
+    >
+      <!-- 基本信息 -->
+      <el-divider content-position="left">基本信息</el-divider>
+      
+      <el-form-item label="赛事ID" prop="id">
+        <el-input v-model="eventForm.id" disabled />
+      </el-form-item>
+
+      <el-form-item label="赛事名称" prop="name">
+        <el-input v-model="eventForm.name" placeholder="请输入赛事名称" />
+      </el-form-item>
+      
+      <el-form-item label="赛事分类" prop="category">
+        <el-select
+          v-model="eventForm.category"
+          placeholder="请选择赛事分类"
+          class="w-full"
+          filterable
+        >
+          <el-option
+            v-for="category in categories"
+            :key="category.id"
+            :label="category.name"
+            :value="category.id"
+          >
+            <span>{{ category.name }}</span>
+            <span class="text-gray-400 text-xs ml-2">{{ category.description }}</span>
+          </el-option>
+        </el-select>
+      </el-form-item>
+      
+      <el-form-item label="赛事描述" prop="description">
+        <el-input
+          v-model="eventForm.description"
+          type="textarea"
+          rows="4"
+          placeholder="请输入赛事描述"
+        />
+      </el-form-item>
+      
+      <el-form-item label="赛事地点" prop="location">
+        <el-input v-model="eventForm.location" placeholder="请输入赛事地点" />
+      </el-form-item>
+
+      <!-- 时间信息 -->
+      <el-divider content-position="left">时间信息</el-divider>
+      
+      <el-form-item label="开始时间" prop="startTime">
+        <el-date-picker
+          v-model="eventForm.startTime"
+          type="datetime"
+          placeholder="选择开始时间"
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          class="w-full"
+        />
+      </el-form-item>
+      
+      <el-form-item label="结束时间" prop="endTime">
+        <el-date-picker
+          v-model="eventForm.endTime"
+          type="datetime"
+          placeholder="选择结束时间"
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          class="w-full"
+        />
+      </el-form-item>
+      
+      <el-form-item label="报名截止时间" prop="registrationDeadline">
+        <el-date-picker
+          v-model="eventForm.registrationDeadline"
+          type="datetime"
+          placeholder="选择报名截止时间"
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          class="w-full"
+        />
+      </el-form-item>
+
+      <!-- 参与信息 -->
+      <el-divider content-position="left">参与信息</el-divider>
+      
+      <el-form-item label="最大参与人数" prop="maxParticipants">
+        <el-input-number 
+          v-model="eventForm.maxParticipants" 
+          :min="1" 
+          :max="10000"
+          class="w-full"
+        />
+      </el-form-item>
+      
+      <el-form-item label="当前参与人数" prop="currentParticipants">
+        <el-input-number 
+          v-model="eventForm.currentParticipants" 
+          :min="0" 
+          :max="eventForm.maxParticipants"
+          class="w-full"
+          disabled
+        />
+      </el-form-item>
+
+      <el-form-item label="赛事状态" prop="status">
+        <el-select v-model="eventForm.status" placeholder="请选择赛事状态" class="w-full">
+          <el-option label="即将开始" value="PENDING" />
+          <el-option label="进行中" value="ONGOING" />
+          <el-option label="已完成" value="COMPLETED" />
+          <el-option label="已取消" value="CANCELLED" />
+        </el-select>
+      </el-form-item>
+      
+      <el-form-item label="赛事图片" prop="eventImage">
+        <el-input
+          v-model="eventForm.eventImage"
+          placeholder="请输入赛事图片URL"
+        />
+      </el-form-item>
+
+      <!-- 提交按钮 -->
+      <el-form-item>
+        <div class="flex justify-end space-x-4">
+          <el-button @click="goBack">取消</el-button>
           <el-button type="primary" @click="submitForm" :loading="submitting">保存修改</el-button>
-          <el-button @click="resetForm">重置</el-button>
-          <el-button @click="$router.push('/admin/events/list')">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+        </div>
+      </el-form-item>
+    </el-form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, FormInstance, FormRules } from 'element-plus';
 import { useRouter, useRoute } from 'vue-router';
-import { eventsAPI } from '../../../api/eventsAPI';
-import { categoryAPI } from '../../../api/categoryAPI';
-import dayjs from 'dayjs';
-
-interface EventCategory {
-  id: number;
-  name: string;
-}
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import eventsAPI from '@/api/eventsAPI';
+import categoryAPI from '@/api/categoryAPI';
+import type { Event } from '@/api/eventsAPI';
+import type { EventCategory } from '@/types/event';
 
 const router = useRouter();
 const route = useRoute();
-const eventId = ref(Number(route.params.id));
-const eventFormRef = ref<FormInstance>();
-const submitting = ref(false);
+const formRef = ref<FormInstance>();
 const loading = ref(true);
-
-// 分类数据
+const submitting = ref(false);
+const error = ref('');
 const categories = ref<EventCategory[]>([]);
+const eventLoaded = ref(false);
 
-// 赛事表单
+// 获取事件ID
+const eventId = parseInt(route.params.id as string);
+
+// 表单数据
 const eventForm = reactive({
+  id: 0,
   name: '',
-  categoryId: null as number | null,
-  eventDates: [] as string[],
-  registrationDates: [] as string[],
-  location: '',
-  organizer: '',
-  maxParticipants: 100,
   description: '',
-  status: ''
+  location: '',
+  startTime: '',
+  endTime: '',
+  registrationDeadline: '',
+  maxParticipants: 100,
+  currentParticipants: 0,
+  eventImage: '',
+  status: 'PENDING',
+  category: null as null | number,
+  isActive: true
 });
 
 // 表单验证规则
 const rules = reactive<FormRules>({
   name: [
     { required: true, message: '请输入赛事名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度应为2到50个字符', trigger: 'blur' }
-  ],
-  categoryId: [
-    { required: true, message: '请选择赛事分类', trigger: 'change' }
-  ],
-  eventDates: [
-    { required: true, message: '请选择赛事日期', trigger: 'change' }
-  ],
-  registrationDates: [
-    { required: true, message: '请选择报名时间', trigger: 'change' }
-  ],
-  location: [
-    { required: true, message: '请输入比赛地点', trigger: 'blur' }
-  ],
-  organizer: [
-    { required: true, message: '请输入主办方', trigger: 'blur' }
-  ],
-  maxParticipants: [
-    { required: true, message: '请输入最大参与人数', trigger: 'change' }
+    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
   ],
   description: [
-    { required: true, message: '请输入赛事描述', trigger: 'blur' },
-    { min: 10, max: 2000, message: '描述长度应为10到2000个字符', trigger: 'blur' }
+    { required: true, message: '请输入赛事描述', trigger: 'blur' }
+  ],
+  location: [
+    { required: true, message: '请输入赛事地点', trigger: 'blur' }
+  ],
+  startTime: [
+    { required: true, message: '请选择开始时间', trigger: 'change' }
+  ],
+  endTime: [
+    { required: true, message: '请选择结束时间', trigger: 'change' },
+    {
+      validator: (rule, value, callback) => {
+        if (value && eventForm.startTime && new Date(value) <= new Date(eventForm.startTime)) {
+          callback(new Error('结束时间必须晚于开始时间'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'change'
+    }
+  ],
+  registrationDeadline: [
+    { required: true, message: '请选择报名截止时间', trigger: 'change' },
+    {
+      validator: (rule, value, callback) => {
+        if (value && eventForm.startTime && new Date(value) >= new Date(eventForm.startTime)) {
+          callback(new Error('报名截止时间必须早于开始时间'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'change'
+    }
+  ],
+  maxParticipants: [
+    { required: true, message: '请输入最大参与人数', trigger: 'blur' },
+    { type: 'number', min: 1, message: '参与人数必须大于0', trigger: 'blur' }
+  ],
+  category: [
+    { required: true, message: '请选择赛事分类', trigger: 'change' }
+  ],
+  status: [
+    { required: true, message: '请选择赛事状态', trigger: 'change' }
   ]
 });
 
-// 加载分类列表
+// 加载分类
 const loadCategories = async () => {
   try {
-    // 获取所有分类
-    const categoriesData = await categoryAPI.getAllCategories();
-    categories.value = categoriesData.map(category => ({
-      id: category.id,
-      name: category.name
-    }));
-  } catch (error) {
-    console.error('获取分类列表失败', error);
-    ElMessage.error('获取分类列表失败');
+    categories.value = await categoryAPI.getAllCategories();
+  } catch (err) {
+    console.error('加载分类失败', err);
+    
+    // 如果管理员API失败，尝试使用公共API
+    try {
+      categories.value = await categoryAPI.getPublicCategories();
+    } catch (publicErr) {
+      console.error('加载公共分类也失败', publicErr);
+    }
   }
 };
 
-// 获取赛事详情
-const fetchEventDetail = async () => {
+// 加载事件数据
+const loadEvent = async () => {
   loading.value = true;
+  error.value = '';
   try {
-    // 调用API获取赛事详情
-    const eventData = await eventsAPI.getEventById(eventId.value);
+    // 首先加载分类
+    await loadCategories();
     
-    // 填充表单数据
-    eventForm.name = eventData.name;
-    eventForm.categoryId = eventData.category?.id;
-    eventForm.eventDates = [
-      dayjs(eventData.startTime).format('YYYY-MM-DD'),
-      dayjs(eventData.endTime).format('YYYY-MM-DD')
-    ];
-    eventForm.registrationDates = [
-      dayjs(eventData.registrationDeadline).subtract(14, 'day').format('YYYY-MM-DD'), // 假设报名开始时间为截止前14天
-      dayjs(eventData.registrationDeadline).format('YYYY-MM-DD')
-    ];
-    eventForm.location = eventData.location;
-    eventForm.organizer = eventData.organizer || '体育部'; // 如果API没提供，使用默认值
-    eventForm.maxParticipants = eventData.maxParticipants;
-    eventForm.description = eventData.description;
-    eventForm.status = eventData.status;
+    // 然后加载事件
+    const event = await eventsAPI.getEventById(eventId);
     
-    loading.value = false;
-  } catch (error) {
-    console.error('获取赛事详情失败', error);
-    ElMessage.error('获取赛事详情失败，请返回重试');
+    // 填充表单
+    eventForm.id = event.id;
+    eventForm.name = event.name;
+    eventForm.description = event.description;
+    eventForm.location = event.location;
+    eventForm.startTime = event.startTime;
+    eventForm.endTime = event.endTime;
+    eventForm.registrationDeadline = event.registrationDeadline;
+    eventForm.maxParticipants = event.maxParticipants;
+    eventForm.currentParticipants = event.currentParticipants || 0;
+    eventForm.eventImage = event.eventImage || '';
+    eventForm.status = event.status;
+    eventForm.category = event.category.id;
+    eventForm.isActive = event.isActive;
+    
+    eventLoaded.value = true;
+  } catch (err: any) {
+    console.error('加载事件数据失败', err);
+    error.value = err.response?.data?.message || '加载赛事数据失败，请重试';
+  } finally {
     loading.value = false;
   }
 };
 
 // 提交表单
 const submitForm = async () => {
-  if (!eventFormRef.value) return;
-
-  await eventFormRef.value.validate(async (valid) => {
+  if (!formRef.value) return;
+  
+  await formRef.value.validate(async (valid, fields) => {
     if (valid) {
       submitting.value = true;
+      error.value = '';
+      
       try {
-        // 处理日期
-        const [startDate, endDate] = eventForm.eventDates;
-        const [registrationStartDate, registrationEndDate] = eventForm.registrationDates;
-
-        // 构建提交的数据
-        const eventData = {
+        // 构建要发送的事件对象
+        const eventToUpdate = {
           name: eventForm.name,
-          category: {
-            id: eventForm.categoryId
-          },
-          startTime: dayjs(startDate).format('YYYY-MM-DD HH:mm:ss'),
-          endTime: dayjs(endDate).format('YYYY-MM-DD HH:mm:ss'),
-          registrationDeadline: dayjs(registrationEndDate).format('YYYY-MM-DD HH:mm:ss'),
-          location: eventForm.location,
-          maxParticipants: eventForm.maxParticipants,
           description: eventForm.description,
-          status: eventForm.status
+          location: eventForm.location,
+          startTime: eventForm.startTime,
+          endTime: eventForm.endTime,
+          registrationDeadline: eventForm.registrationDeadline,
+          maxParticipants: eventForm.maxParticipants,
+          eventImage: eventForm.eventImage || null,
+          status: eventForm.status,
+          category: { id: eventForm.category } as any
         };
-
-        // 调用API更新赛事
-        await eventsAPI.updateEvent(eventId.value, eventData);
-        ElMessage.success('赛事更新成功');
-        router.push('/admin/events/list');
-      } catch (error) {
-        console.error('更新赛事失败', error);
-        ElMessage.error('更新赛事失败，请重试');
+        
+        await eventsAPI.updateEvent(eventId, eventToUpdate);
+        ElMessage.success('赛事更新成功！');
+        router.push('/admin/events');
+      } catch (err: any) {
+        console.error('更新赛事失败', err);
+        error.value = err.response?.data?.message || '更新赛事失败，请重试';
       } finally {
         submitting.value = false;
       }
     } else {
-      ElMessage.warning('请检查表单填写是否正确');
-      return false;
+      console.log('表单验证失败', fields);
     }
   });
 };
 
-// 重置表单
-const resetForm = () => {
-  fetchEventDetail(); // 重新获取原始数据
+// 返回列表
+const goBack = () => {
+  router.push('/admin/events');
 };
 
-// 初始化加载
 onMounted(() => {
-  loadCategories();
-  fetchEventDetail();
+  if (!eventId || isNaN(eventId)) {
+    error.value = '无效的赛事ID';
+    loading.value = false;
+    return;
+  }
+  
+  loadEvent();
 });
 </script>
-
-<style scoped>
-.edit-event {
-  width: 100%;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.loading-container {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 4px;
-}
-
-.event-form-container {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 4px;
-}
-
-.event-form {
-  max-width: 800px;
-  margin: 0 auto;
-}
-</style> 
