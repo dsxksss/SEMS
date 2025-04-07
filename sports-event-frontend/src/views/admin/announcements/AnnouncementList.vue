@@ -176,7 +176,7 @@
               <el-upload
                 action="/api/files/upload"
                 :headers="{
-                  Authorization: `Bearer ${authStore.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('token') : '')}`
+                  Authorization: `Bearer ${authStore.token}`
                 }"
                 :show-file-list="false"
                 :on-success="handleImageSuccess"
@@ -184,6 +184,8 @@
                 :before-upload="beforeImageUpload"
                 :accept="'image/jpeg,image/png,image/gif'"
                 name="file"
+                :limit="1"
+                :multiple="false"
               >
                 <el-button type="primary" size="small">
                   <i class="el-icon-picture-outline"></i> 插入图片
@@ -230,13 +232,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, FormInstance, FormRules } from 'element-plus';
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import dayjs from 'dayjs';
 import { announcementAPI } from '../../../api';
 import { ElMessageBox } from 'element-plus';
 import { useAuthStore } from '../../../stores/auth';
-import apiClient from '../../../api/axios';
-import axios from 'axios';
 
 const authStore = useAuthStore();
 
@@ -246,7 +246,7 @@ interface Attachment {
   size?: number;
 }
 
-interface Announcement {
+interface EnhancedAnnouncement {
   id: number;
   title: string;
   content: string;
@@ -267,7 +267,7 @@ const filterForm = reactive({
 });
 
 // 公告列表数据
-const announcementList = ref<Announcement[]>([]);
+const announcementList = ref<EnhancedAnnouncement[]>([]);
 const loading = ref(false);
 const total = ref(0);
 const pageSize = ref(10);
@@ -275,7 +275,7 @@ const currentPage = ref(1);
 
 // 详情弹窗
 const detailDialogVisible = ref(false);
-const currentAnnouncement = ref<Announcement | null>(null);
+const currentAnnouncement = ref<EnhancedAnnouncement | null>(null);
 
 // 表单弹窗
 const formDialogVisible = ref(false);
@@ -285,7 +285,7 @@ const submitting = ref(false);
 
 // 删除确认对话框
 const deleteDialogVisible = ref(false);
-const deleteTarget = ref<Announcement | null>(null);
+const deleteTarget = ref<EnhancedAnnouncement | null>(null);
 const deleting = ref(false);
 
 // 公告表单
@@ -332,8 +332,13 @@ const fetchAnnouncementList = async () => {
       if (filterForm.type && item.type !== filterForm.type) {
         matches = false;
       }
-      if (filterForm.status && item.status !== filterForm.status) {
-        matches = false;
+      // 将API返回的published属性转为前端使用的status进行过滤
+      if (filterForm.status) {
+        // 根据published状态确定当前记录的status
+        const itemStatus = item.published ? 'PUBLISHED' : 'DRAFT';
+        if (itemStatus !== filterForm.status) {
+          matches = false;
+        }
       }
       return matches;
     });
@@ -346,18 +351,26 @@ const fetchAnnouncementList = async () => {
     const endIndex = startIndex + pageSize.value;
     
     // 格式化数据
-    announcementList.value = filteredAnnouncements.slice(startIndex, endIndex).map(ann => ({
-      id: ann.id,
-      title: ann.title,
-      content: ann.content,
-      type: ann.type || (ann.event ? 'EVENT' : 'SYSTEM'),
-      status: ann.isPublished ? 'PUBLISHED' : 'DRAFT',
-      createTime: ann.createdAt ? dayjs(ann.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
-      publishTime: ann.isPublished && ann.updatedAt ? dayjs(ann.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
-      createdBy: ann.createdBy?.username || '管理员',
-      viewCount: ann.viewCount || 0,
-      attachments: ann.attachments || []
-    }));
+    announcementList.value = filteredAnnouncements.slice(startIndex, endIndex).map(ann => {
+      const formattedAttachments: Attachment[] = (ann.attachments || []).map((url: string) => ({
+        name: url.split('/').pop() || '',
+        url: url,
+        size: 0
+      }));
+      
+      return {
+        id: ann.id,
+        title: ann.title,
+        content: ann.content,
+        type: ann.type || (ann.eventId ? 'EVENT' : 'SYSTEM'),
+        status: ann.published ? 'PUBLISHED' : 'DRAFT',
+        createTime: ann.createdAt ? dayjs(ann.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+        publishTime: ann.published && ann.updatedAt ? dayjs(ann.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+        createdBy: ann.createdBy || '管理员',
+        viewCount: 0,
+        attachments: formattedAttachments
+      };
+    });
   } catch (error) {
     console.error('获取公告列表失败', error);
     ElMessage.error('获取公告列表失败，请刷新重试');
@@ -445,7 +458,7 @@ const getStatusTag = (status: string) => {
 };
 
 // 查看公告详情
-const handleView = async (row: Announcement) => {
+const handleView = async (row: EnhancedAnnouncement) => {
   try {
     // 调用API获取详细信息
     const announcement = await announcementAPI.getAnnouncementById(row.id);
@@ -473,13 +486,17 @@ const handleView = async (row: Announcement) => {
       id: announcement.id,
       title: announcement.title, 
       content: processedContent || announcement.content,
-      type: announcement.type || (announcement.event ? 'EVENT' : 'SYSTEM'),
-      status: announcement.isPublished ? 'PUBLISHED' : 'DRAFT',
+      type: announcement.type || (announcement.eventId ? 'EVENT' : 'SYSTEM'),
+      status: announcement.published ? 'PUBLISHED' : 'DRAFT',
       createTime: announcement.createdAt ? dayjs(announcement.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-',
-      publishTime: announcement.isPublished && announcement.updatedAt ? dayjs(announcement.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
-      createdBy: announcement.createdBy?.username || '管理员',
-      viewCount: announcement.viewCount || 0,
-      attachments: announcement.attachments || []
+      publishTime: announcement.published && announcement.updatedAt ? dayjs(announcement.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
+      createdBy: announcement.createdBy || '管理员',
+      viewCount: 0,
+      attachments: (announcement.attachments || []).map((url: string) => ({
+        name: url.split('/').pop() || '',
+        url: url,
+        size: 0
+      }))
     };
     
     detailDialogVisible.value = true;
@@ -497,7 +514,7 @@ const handleCreate = () => {
 };
 
 // 编辑公告
-const handleEdit = async (row: Announcement) => {
+const handleEdit = async (row: EnhancedAnnouncement) => {
   try {
     // 获取最新的公告详情
     const announcement = await announcementAPI.getAnnouncementById(row.id);
@@ -509,11 +526,15 @@ const handleEdit = async (row: Announcement) => {
     announcementForm.id = announcement.id;
     announcementForm.title = announcement.title;
     announcementForm.content = announcement.content;
-    announcementForm.type = announcement.type || (announcement.event ? 'EVENT' : 'SYSTEM');
-    announcementForm.status = announcement.isPublished ? 'PUBLISHED' : 'DRAFT';
+    announcementForm.type = announcement.type || (announcement.eventId ? 'EVENT' : 'SYSTEM');
+    announcementForm.status = announcement.published ? 'PUBLISHED' : 'DRAFT';
     
     // 处理附件
-    announcementForm.attachments = announcement.attachments || [];
+    announcementForm.attachments = (announcement.attachments || []).map((url: string) => ({
+      name: url.split('/').pop() || '',
+      url: url,
+      size: 0
+    }));
     
     formDialogVisible.value = true;
   } catch (error) {
@@ -523,7 +544,7 @@ const handleEdit = async (row: Announcement) => {
 };
 
 // 发布公告
-const handlePublish = (row: Announcement) => {
+const handlePublish = (row: EnhancedAnnouncement) => {
   ElMessageBox.confirm(
     `确定要发布公告 "${row.title}" 吗？`,
     '发布确认',
@@ -550,7 +571,7 @@ const handlePublish = (row: Announcement) => {
 };
 
 // 撤回公告（设为已过期）
-const handleSetExpired = (row: Announcement) => {
+const handleSetExpired = (row: EnhancedAnnouncement) => {
   ElMessageBox.confirm(
     `确定要撤回公告 "${row.title}" 吗？`,
     '撤回确认',
@@ -577,7 +598,7 @@ const handleSetExpired = (row: Announcement) => {
 };
 
 // 删除公告
-const handleDelete = (row: Announcement) => {
+const handleDelete = (row: EnhancedAnnouncement) => {
   deleteTarget.value = row;
   deleteDialogVisible.value = true;
 };
@@ -627,7 +648,7 @@ const resetAnnouncementForm = () => {
 const submitAnnouncementForm = async () => {
   if (!announcementFormRef.value) return;
   
-  await announcementFormRef.value.validate(async (valid) => {
+  await announcementFormRef.value.validate((valid) => {
     if (valid) {
       submitting.value = true;
       try {
@@ -636,7 +657,7 @@ const submitAnnouncementForm = async () => {
           title: announcementForm.title,
           content: announcementForm.content,
           type: announcementForm.type || 'SYSTEM',
-          isPublished: announcementForm.status === 'PUBLISHED',
+          published: announcementForm.status === 'PUBLISHED',
           attachments: [] // 不使用附件功能
         };
         
@@ -644,11 +665,11 @@ const submitAnnouncementForm = async () => {
         
         if (isEdit.value) {
           // 更新公告
-          await announcementAPI.updateAnnouncement(announcementForm.id, announcementData);
+          void announcementAPI.updateAnnouncement(announcementForm.id, announcementData);
           ElMessage.success('公告更新成功');
         } else {
           // 创建公告
-          await announcementAPI.createAnnouncement(announcementData);
+          void announcementAPI.createAnnouncement(announcementData);
           ElMessage.success('公告创建成功');
         }
         
@@ -662,7 +683,6 @@ const submitAnnouncementForm = async () => {
       }
     } else {
       ElMessage.warning('请检查表单填写是否正确');
-      return false;
     }
   });
 };
@@ -706,47 +726,33 @@ const handleImageSuccess = (response: any, file: any) => {
     return;
   }
   
-  // 尝试从不同格式的响应中获取文件名
+  // 获取文件名
   let filename = null;
   
-  if (response) {
-    if (response.filename) {
-      // 标准格式
-      filename = response.filename;
-      console.log('从response.filename获取文件名:', filename);
-    } else if (response.data && response.data.filename) {
-      // 嵌套在data字段中
-      filename = response.data.filename;
-      console.log('从response.data.filename获取文件名:', filename);
-    } else if (typeof response === 'string') {
-      // 字符串格式(可能是直接返回的文件名)
-      filename = response;
-      console.log('响应是字符串格式:', filename);
-    } else if (response.id) {
-      // 有些API可能返回id作为文件标识
-      filename = response.id;
-      console.log('使用response.id作为文件名:', filename);
-    } else {
-      // 尝试检查响应中的所有字段
-      console.log('未找到标准字段，检查所有响应字段:');
-      for (const key in response) {
-        console.log(`- ${key}:`, response[key]);
-      }
-    }
+  // 处理后端FileUploadResponse格式的响应
+  if (response.filename) {
+    filename = response.filename;
+    console.log('从FileUploadResponse获取文件名:', filename);
+  } else if (response.data && response.data.filename) {
+    filename = response.data.filename;
+    console.log('从嵌套data对象获取文件名:', filename);
+  } else if (typeof response === 'string') {
+    filename = response;
+    console.log('响应是字符串格式:', filename);
   }
   
   if (filename) {
+    // 构建完整的图片URL
     const imageUrl = `/api/files/download/${filename}`;
     console.log('构建的图片URL:', imageUrl);
     
-    // 在当前光标位置插入图片HTML
-    const imgHtml = `<img src="${imageUrl}" alt="${file.name}" style="max-width: 100%; margin: 10px 0;" />`;
-    // 将图片HTML插入到内容中
+    // 在当前内容末尾插入图片HTML
+    const imgHtml = `<img src="${imageUrl}" alt="${file.name || '上传图片'}" style="max-width: 100%; margin: 10px 0;" />`;
     announcementForm.content += imgHtml;
     ElMessage.success('图片插入成功');
   } else {
     ElMessage.error('无法从响应中获取文件名');
-    console.error('无效的响应格式:', response);
+    console.error('无法解析的响应格式:', response);
   }
 };
 
@@ -754,7 +760,7 @@ const handleImageSuccess = (response: any, file: any) => {
 const handleImageError = (error: any) => {
   console.error('图片上传失败:', error);
   
-  // 检查是否为认证错误
+  // 分析错误类型
   if (error.status === 401 || (error.response && error.response.status === 401)) {
     ElMessage.error('认证已过期，请重新登录后再试');
     // 短暂延迟后登出
@@ -762,9 +768,33 @@ const handleImageError = (error: any) => {
       authStore.logout();
     }, 1500);
     return;
+  } else if (error.status === 400 || (error.response && error.response.status === 400)) {
+    // 处理请求参数错误
+    const errorMessage = error.response?.data?.message || '文件格式不正确或大小超出限制';
+    ElMessage.error(`上传失败: ${errorMessage}`);
+    return;
+  } else if (error.status === 413 || (error.response && error.response.status === 413)) {
+    // 处理文件过大错误
+    ElMessage.error('文件大小超出服务器限制，请使用小于10MB的图片');
+    return;
   }
   
+  // 网络错误
+  if (error.message && error.message.includes('Network Error')) {
+    ElMessage.error('网络连接错误，请检查您的网络连接后重试');
+    return;
+  }
+  
+  // 其他未知错误
   ElMessage.error('图片上传失败，请检查网络连接或重新登录后再试');
+  
+  // 输出详细错误信息以便调试
+  console.log('错误详情:', {
+    status: error.status || (error.response && error.response.status),
+    statusText: error.statusText || (error.response && error.response.statusText),
+    message: error.message,
+    data: error.response && error.response.data
+  });
 };
 
 // 初始化加载

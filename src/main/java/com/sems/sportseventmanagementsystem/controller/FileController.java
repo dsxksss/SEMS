@@ -28,21 +28,35 @@ public class FileController {
     private String uploadDir;
 
     @PostMapping("/upload")
-    @PreAuthorize("permitAll()")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
+        System.out.println("File upload request received, filename: " + 
+                          (file != null ? file.getOriginalFilename() : "null") + 
+                          ", size: " + (file != null ? file.getSize() : 0) + " bytes");
+        
         try {
             if (file.isEmpty()) {
+                System.out.println("文件上传失败: 文件为空");
                 return ResponseEntity.badRequest()
-                        .body(new MessageResponse("Please select a file to upload"));
+                        .body(new MessageResponse("请选择要上传的文件"));
             }
             
-            // Create upload directory if it doesn't exist
+            // 检查文件类型
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                System.out.println("文件上传失败: 不支持的文件类型 " + contentType);
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("只支持上传图片文件"));
+            }
+            
+            // 确保上传目录存在
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+                System.out.println("创建上传目录: " + uploadPath.toAbsolutePath());
             }
             
-            // Generate unique filename
+            // 生成唯一文件名
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
@@ -50,14 +64,25 @@ public class FileController {
             }
             String filename = UUID.randomUUID().toString() + extension;
             
-            // Copy file to the upload directory
+            // 复制文件到上传目录
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("文件上传成功: " + filePath.toAbsolutePath());
             
-            return ResponseEntity.ok(new FileUploadResponse(filename, file.getContentType(), file.getSize()));
+            // 返回成功响应
+            FileUploadResponse response = new FileUploadResponse(filename, file.getContentType(), file.getSize());
+            System.out.println("返回响应: " + response.getFilename());
+            return ResponseEntity.ok(response);
         } catch (IOException e) {
+            System.out.println("文件上传异常: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
-                    .body(new MessageResponse("Failed to upload file: " + e.getMessage()));
+                    .body(new MessageResponse("文件上传失败: " + e.getMessage()));
+        } catch (Exception e) {
+            System.out.println("未预期的异常: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(new MessageResponse("服务器内部错误: " + e.getMessage()));
         }
     }
 

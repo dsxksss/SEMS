@@ -14,12 +14,11 @@
           @keyup.enter="searchEvents"
         >
           <template #append>
-            <button 
-              class="h-full px-3 py-0 bg-indigo-600 text-white border border-indigo-600 hover:bg-indigo-700 transition-colors"
-              @click="searchEvents"
+            <el-btn 
+               @click="searchEvents"
             >
               <el-icon><Search /></el-icon>
-            </button>
+            </el-btn>
           </template>
         </el-input>
         

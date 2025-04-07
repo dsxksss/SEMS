@@ -43,7 +43,8 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000 // 增加超时时间，提高可靠性
+  timeout: 15000, // 增加超时时间，提高可靠性
+  withCredentials: true // 跨域请求时携带凭证
 });
 
 // 重试配置
@@ -89,8 +90,15 @@ apiClient.interceptors.request.use(
     // 从localStorage获取token
     const token = localStorage.getItem('token');
     if (token) {
-      // 检查令牌是否即将过期
-      if (isTokenExpiringSoon(token) && !config.url?.includes('/auth/')) {
+      // 检查是否为文件上传请求，如果是则使用简单方式处理
+      const isFileUpload = config.url?.includes('/files/upload') && 
+                           config.method?.toLowerCase() === 'post';
+      
+      if (isFileUpload) {
+        // 对于文件上传请求，直接使用token，不尝试刷新
+        console.log('处理文件上传请求，设置授权头');
+        config.headers.Authorization = `Bearer ${token}`;
+      } else if (isTokenExpiringSoon(token) && !config.url?.includes('/auth/')) {
         // 如果令牌即将过期且不是认证请求，尝试刷新令牌
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken && !window.__isRefreshing) {
@@ -131,6 +139,14 @@ apiClient.interceptors.request.use(
     
     // 添加用于重试的标记
     config._retryCount = config._retryCount || 0;
+    
+    // 对于文件上传请求，特殊处理Content-Type
+    const isFileUpload = config.url?.includes('/files/upload') && 
+                         config.method?.toLowerCase() === 'post';
+    if (isFileUpload) {
+      // 让浏览器自动设置Content-Type为multipart/form-data，并包含boundary
+      delete config.headers['Content-Type'];
+    }
     
     return config;
   },
