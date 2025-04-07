@@ -119,12 +119,36 @@
           class="w-full"
         />
       </el-form-item>
+
+      <!-- 状态信息 -->
+      <el-divider content-position="left">状态信息</el-divider>
       
-      <el-form-item label="赛事图片" prop="eventImage">
-        <el-input
-          v-model="eventForm.eventImage"
-          placeholder="请输入赛事图片URL"
-        />
+      <el-form-item label="赛事状态" prop="status">
+        <el-select
+          v-model="eventForm.status"
+          placeholder="请选择赛事状态"
+          class="w-full"
+        >
+          <el-option
+            v-for="status in ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED']"
+            :key="status"
+            :label="{
+              'UPCOMING': '即将开始',
+              'ONGOING': '进行中',
+              'COMPLETED': '已完成',
+              'CANCELLED': '已取消'
+            }[status]"
+            :value="status"
+          ></el-option>
+        </el-select>
+      </el-form-item>
+      
+      <el-form-item label="赛事活跃状态" prop="isActive">
+        <el-switch
+          v-model="eventForm.isActive"
+          active-text="活跃"
+          inactive-text="不活跃"
+        ></el-switch>
       </el-form-item>
 
       <!-- 提交按钮 -->
@@ -163,8 +187,9 @@ const eventForm = reactive({
   endTime: '',
   registrationDeadline: '',
   maxParticipants: 100,
-  eventImage: '',
+  status: 'UPCOMING' as 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED',
   category: null as null | number,
+  isActive: true
 });
 
 // 表单验证规则
@@ -185,7 +210,7 @@ const rules = reactive<FormRules>({
   endTime: [
     { required: true, message: '请选择结束时间', trigger: 'change' },
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if (value && eventForm.startTime && new Date(value) <= new Date(eventForm.startTime)) {
           callback(new Error('结束时间必须晚于开始时间'));
         } else {
@@ -198,7 +223,7 @@ const rules = reactive<FormRules>({
   registrationDeadline: [
     { required: true, message: '请选择报名截止时间', trigger: 'change' },
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if (value && eventForm.startTime && new Date(value) >= new Date(eventForm.startTime)) {
           callback(new Error('报名截止时间必须早于开始时间'));
         } else {
@@ -260,13 +285,14 @@ const submitForm = async () => {
           endTime: eventForm.endTime,
           registrationDeadline: eventForm.registrationDeadline,
           maxParticipants: eventForm.maxParticipants,
-          eventImage: eventForm.eventImage || null,
+          status: eventForm.status,
+          isActive: eventForm.isActive,
           category: { id: eventForm.category } as any
         };
         
-        const result = await eventsAPI.createEvent(eventToCreate);
+        await eventsAPI.createEvent(eventToCreate);
         ElMessage.success('赛事创建成功！');
-        router.push('/admin/events');
+        router.push('/admin/events/list');
       } catch (err: any) {
         console.error('创建赛事失败', err);
         error.value = err.response?.data?.message || '创建赛事失败，请重试';
@@ -281,7 +307,7 @@ const submitForm = async () => {
 
 // 返回列表
 const goBack = () => {
-  router.push('/admin/events');
+  router.push('/admin/events/list');
 };
 
 onMounted(() => {

@@ -174,13 +174,16 @@
             />
             <div class="editor-tools">
               <el-upload
-                :action="null"
-                :http-request="handleHttpUpload"
+                action="/api/files/upload"
+                :headers="{
+                  Authorization: `Bearer ${authStore.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('token') : '')}`
+                }"
                 :show-file-list="false"
                 :on-success="handleImageSuccess"
                 :on-error="handleImageError"
                 :before-upload="beforeImageUpload"
                 :accept="'image/jpeg,image/png,image/gif'"
+                name="file"
               >
                 <el-button type="primary" size="small">
                   <i class="el-icon-picture-outline"></i> 插入图片
@@ -750,54 +753,18 @@ const handleImageSuccess = (response: any, file: any) => {
 // 处理图片上传错误
 const handleImageError = (error: any) => {
   console.error('图片上传失败:', error);
-  ElMessage.error('图片上传失败，请检查网络连接或重新登录后再试');
-};
-
-// 自定义HTTP上传请求
-const handleHttpUpload = async (options: any) => {
-  try {
-    const file = options.file;
-    // 创建FormData
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    console.log('开始上传文件，大小:', file.size, '类型:', file.type);
-    
-    // 获取当前token
-    const token = authStore.token;
-    console.log('使用token:', token?.substring(0, 20) + '...');
-    
-    try {
-      // 直接使用axios而不是apiClient，以完全控制请求
-      const response = await axios.post('/api/files/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('文件上传成功，响应:', response.data);
-      options.onSuccess(response.data);
-    } catch (error) {
-      console.error('apiClient上传错误:', error);
-      if (error.response) {
-        console.error('错误状态码:', error.response.status);
-        console.error('错误详情:', error.response.data);
-      }
-      throw error; // 向上传递错误
-    }
-  } catch (error) {
-    console.error('上传处理错误:', error);
-    if (error.response && error.response.status === 401) {
-      ElMessage.error('登录信息已过期，请重新登录');
-      setTimeout(() => {
-        authStore.logout();
-      }, 1000);
-    } else {
-      ElMessage.error(`上传失败: ${error.message || '未知错误'}`);
-    }
-    options.onError(error);
+  
+  // 检查是否为认证错误
+  if (error.status === 401 || (error.response && error.response.status === 401)) {
+    ElMessage.error('认证已过期，请重新登录后再试');
+    // 短暂延迟后登出
+    setTimeout(() => {
+      authStore.logout();
+    }, 1500);
+    return;
   }
+  
+  ElMessage.error('图片上传失败，请检查网络连接或重新登录后再试');
 };
 
 // 初始化加载

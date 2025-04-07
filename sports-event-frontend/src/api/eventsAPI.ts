@@ -9,6 +9,7 @@ export interface Event {
   endTime: string;
   registrationDeadline: string;
   maxParticipants: number;
+  currentParticipants?: number;
   status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   isActive: boolean;
   category: EventCategory;

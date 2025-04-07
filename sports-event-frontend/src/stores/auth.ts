@@ -44,13 +44,30 @@ export const useAuthStore = defineStore('auth', {
           this.token = token;
           this.isAuthenticated = true;
           
-          console.log('已恢复用户状态:', this.user);
-          console.log('用户角色:', this.user.roles);
-          console.log('是否管理员:', this.isAdmin);
+          // 验证token是否已过期
+          if (this.checkTokenExpiration(false)) {
+            console.log('Token已过期，尝试刷新...');
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (refreshToken) {
+              try {
+                await authAPI.refreshToken(refreshToken);
+                console.log('Token刷新成功');
+              } catch (error) {
+                console.error('Token刷新失败，将退出登录');
+                this.logout();
+                return;
+              }
+            } else {
+              console.log('无刷新Token，将退出登录');
+              this.logout();
+              return;
+            }
+          }
         } catch (error) {
           // 解析失败，清除存储
           console.error('解析用户数据失败:', error);
           localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
         }
       }
@@ -62,11 +79,9 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
-        console.log('正在登录...');
         const response = await authAPI.login(credentials);
-        console.log('登录响应:', response);
         
-        // 保存认证信息
+        // 由于已在authAPI中保存了token和用户信息，只需更新状态
         this.user = {
           id: response.id,
           username: response.username,
@@ -76,38 +91,16 @@ export const useAuthStore = defineStore('auth', {
         this.token = response.token;
         this.isAuthenticated = true;
         
-        // 存储到localStorage
-        localStorage.setItem('token', response.token);
-        // 保存刷新token（如果后端提供了）
-        if (response.refreshToken) {
-          localStorage.setItem('refreshToken', response.refreshToken);
-        }
-        localStorage.setItem('user', JSON.stringify(this.user));
-        
-        console.log('登录成功, 用户信息:', this.user);
-        console.log('用户角色:', this.user.roles);
-        console.log('是否管理员:', this.isAdmin);
-        
-        // 登录成功，根据角色重定向到不同页面
+        // 登录成功，根据角色重定向
         if (this.isAdmin) {
-          console.log('用户是管理员，准备跳转到管理后台...');
-          // 确保异步完成后再跳转
-          setTimeout(() => {
-            router.push('/admin/dashboard');
-          }, 100);
+          router.push('/admin/dashboard');
         } else {
-          console.log('普通用户登录，准备跳转到用户界面...');
-          setTimeout(() => {
-            router.push('/user/dashboard');
-          }, 100);
+          router.push('/user/dashboard');
         }
         
-        // 登录成功
         return true;
       } catch (error: any) {
-        console.error('登录失败:', error);
-        
-        // 处理具体的错误类型
+        // 处理登录错误
         if (error.response) {
           const status = error.response.status;
           const data = error.response.data;
@@ -136,10 +129,9 @@ export const useAuthStore = defineStore('auth', {
       
       try {
         await authAPI.register(userData);
-        // 注册成功
         return true;
       } catch (error: any) {
-        // 处理具体的错误类型
+        // 处理注册错误
         if (error.response) {
           const status = error.response.status;
           const data = error.response.data;
@@ -162,19 +154,17 @@ export const useAuthStore = defineStore('auth', {
     },
     
     // 用户退出
-    logout() {
-      authAPI.logout();
-      this.user = null;
-      this.token = null;
-      this.isAuthenticated = false;
-      
-      // 清除localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      
-      // 跳转到登录页
-      router.push('/login');
+    async logout() {
+      try {
+        await authAPI.logout();
+      } catch (error) {
+        console.error('退出登录时发生错误:', error);
+      } finally {
+        this.user = null;
+        this.token = null;
+        this.isAuthenticated = false;
+        router.push('/login');
+      }
     },
     
     // 更新用户头像
@@ -193,14 +183,11 @@ export const useAuthStore = defineStore('auth', {
     // 刷新用户信息
     async refreshUserInfo() {
       try {
-        // 导入用户API
         const { userAPI } = await import('../api/userAPI');
-        // 获取最新的用户信息
         const userData = await userAPI.getCurrentUser();
         if (userData) {
-          // 确保合并所有用户属性，并转换类型以匹配User接口
+          // 确保合并所有用户属性
           if (this.user) {
-            // 将userData转换为兼容的类型
             const updatedUser: User = {
               id: userData.id,
               username: userData.username,
@@ -211,20 +198,14 @@ export const useAuthStore = defineStore('auth', {
               realName: userData.realName
             };
             
-            // 更新用户状态
             this.user = {
               ...this.user,
               ...updatedUser
             };
-          } else {
-            // 如果没有现有用户，尝试转换userData为User类型
-            // 注意：这种情况可能缺少roles字段，实际使用中不应发生
-            this.user = userData as unknown as User;
+            
+            // 更新localStorage中的用户信息
+            localStorage.setItem('user', JSON.stringify(this.user));
           }
-          
-          // 更新localStorage中的用户信息
-          localStorage.setItem('user', JSON.stringify(this.user));
-          console.log('用户信息已刷新:', this.user);
         }
         return true;
       } catch (error) {
@@ -234,7 +215,7 @@ export const useAuthStore = defineStore('auth', {
     },
     
     // 检查token是否已过期
-    checkTokenExpiration(showLogs = true) {
+    checkTokenExpiration(showLogs = false) {
       const token = localStorage.getItem('token');
       
       // 如果没有token，则视为已过期
@@ -252,48 +233,25 @@ export const useAuthStore = defineStore('auth', {
         }
         
         // 解码payload
-        let payload;
-        try {
-          const base64Url = parts[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(
-            atob(base64).split('').map(c => {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join('')
-          );
-          payload = JSON.parse(jsonPayload);
-        } catch (e) {
-          console.error('无法解码Token payload:', e);
-          return true;
-        }
-        
-        if (showLogs) console.log('Token payload:', payload);
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64).split('').map(c => {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join('')
+        );
+        const payload = JSON.parse(jsonPayload);
         
         // 检查exp(过期时间)字段
         if (payload.exp) {
           const expirationTime = payload.exp * 1000; // 转换为毫秒
           const currentTime = Date.now();
           
-          const timeUntilExpiration = expirationTime - currentTime;
-          if (showLogs) {
-            console.log(`Token过期时间: ${new Date(expirationTime).toLocaleString()}`);
-            console.log(`当前时间: ${new Date(currentTime).toLocaleString()}`);
-            console.log(`剩余时间: ${Math.floor(timeUntilExpiration / 1000 / 60)} 分钟`);
-          }
-          
-          // 如果token已过期
+          // token已过期
           if (currentTime > expirationTime) {
-            if (showLogs) console.log('Token已过期');
             return true;
           }
           
-          // 如果token快要过期（剩余10分钟内）
-          if (timeUntilExpiration < 10 * 60 * 1000) {
-            if (showLogs) console.warn('Token即将过期，剩余不到10分钟');
-            // 这里可以触发刷新token的逻辑
-          }
-          
-          // token没有过期
           return false;
         }
       } catch (error) {

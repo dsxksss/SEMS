@@ -3,12 +3,10 @@ package com.sems.sportseventmanagementsystem.controller;
 import com.sems.sportseventmanagementsystem.entity.*;
 import com.sems.sportseventmanagementsystem.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,9 +27,6 @@ public class StatisticsController {
 
     @Autowired
     private AnnouncementRepository announcementRepository;
-
-    @Autowired
-    private EventCategoryRepository categoryRepository;
 
     /**
      * 获取仪表盘统计数据

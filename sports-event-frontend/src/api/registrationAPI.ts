@@ -10,12 +10,40 @@ export interface Registration {
   user: {
     id: number;
     username: string;
+    email?: string;
+    avatar?: string;
   };
   registrationTime: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   notes: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// 为管理赛事参与者添加接口
+export interface Participant {
+  id: number;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    avatar?: string;
+  };
+  event: {
+    id: number;
+    name: string;
+  };
+  registrationTime: string;
+  checkInTime?: string;
+  status: 'REGISTERED' | 'CHECKED_IN' | 'CANCELLED';
+  notes?: string;
+}
+
+export interface ParticipantQueryParams {
+  page?: number;
+  size?: number;
+  status?: string;
+  search?: string;
 }
 
 export const registrationAPI = {
@@ -95,6 +123,45 @@ export const registrationAPI = {
       status,
       notes
     });
+    return response.data;
+  },
+
+  /**
+   * 管理员: 获取赛事参与者列表
+   */
+  getEventParticipants: async (eventId: number, params: ParticipantQueryParams = {}) => {
+    const response = await apiClient.get<PaginatedResponse<Participant>>(`/participants/event/${eventId}`, {
+      params: {
+        page: params.page || 0,
+        size: params.size || 10,
+        status: params.status || '',
+        search: params.search || ''
+      }
+    });
+    return response.data;
+  },
+
+  /**
+   * 管理员: 签到参与者
+   */
+  checkInParticipant: async (participantId: number) => {
+    const response = await apiClient.put<Participant>(`/participants/${participantId}/check-in`);
+    return response.data;
+  },
+
+  /**
+   * 管理员: 更新参与者备注
+   */
+  updateParticipantNotes: async (participantId: number, notes: string) => {
+    const response = await apiClient.put<Participant>(`/participants/${participantId}/notes`, { notes });
+    return response.data;
+  },
+
+  /**
+   * 管理员: 取消参与者资格
+   */
+  cancelParticipation: async (participantId: number) => {
+    const response = await apiClient.put<Participant>(`/participants/${participantId}/cancel`);
     return response.data;
   }
 };

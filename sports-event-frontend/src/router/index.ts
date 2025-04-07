@@ -165,6 +165,28 @@ const routes = [
         }
       },
       {
+        path: 'events/create',
+        name: 'CreateEvent',
+        component: () => import('../views/admin/events/CreateEvent.vue'),
+        meta: { 
+          title: '创建赛事',
+          parent: '赛事项目管理',
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'events/:id',
+        name: 'EventDetail',
+        component: () => import('../views/admin/events/EventDetail.vue'),
+        meta: { 
+          title: '赛事详情',
+          parent: '赛事项目管理',
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
         path: 'events/edit/:id',
         name: 'EditEvent',
         component: () => import('../views/admin/events/EditEvent.vue'),

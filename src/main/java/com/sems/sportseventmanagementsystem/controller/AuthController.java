@@ -1,15 +1,20 @@
 package com.sems.sportseventmanagementsystem.controller;
 
 import com.sems.sportseventmanagementsystem.entity.ERole;
+import com.sems.sportseventmanagementsystem.entity.RefreshToken;
 import com.sems.sportseventmanagementsystem.entity.Role;
 import com.sems.sportseventmanagementsystem.entity.User;
 import com.sems.sportseventmanagementsystem.payload.request.LoginRequest;
 import com.sems.sportseventmanagementsystem.payload.request.SignupRequest;
+import com.sems.sportseventmanagementsystem.payload.request.TokenRefreshRequest;
 import com.sems.sportseventmanagementsystem.payload.response.JwtResponse;
 import com.sems.sportseventmanagementsystem.payload.response.MessageResponse;
+import com.sems.sportseventmanagementsystem.payload.response.TokenRefreshResponse;
 import com.sems.sportseventmanagementsystem.repository.RoleRepository;
 import com.sems.sportseventmanagementsystem.repository.UserRepository;
+import com.sems.sportseventmanagementsystem.security.exception.TokenRefreshException;
 import com.sems.sportseventmanagementsystem.security.jwt.JwtUtils;
+import com.sems.sportseventmanagementsystem.security.services.RefreshTokenService;
 import com.sems.sportseventmanagementsystem.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +28,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -45,6 +49,9 @@ public class AuthController {
 
     @Autowired
     JwtUtils jwtUtils;
+    
+    @Autowired
+    RefreshTokenService refreshTokenService;
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -58,12 +65,38 @@ public class AuthController {
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
+        
+        // 创建刷新令牌
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(authentication);
 
         return ResponseEntity.ok(new JwtResponse(jwt,
+                                                 refreshToken.getToken(),
                                                  userDetails.getId(), 
                                                  userDetails.getUsername(), 
                                                  userDetails.getEmail(), 
                                                  roles));
+    }
+    
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        String requestRefreshToken = request.getRefreshToken();
+
+        return refreshTokenService.findByToken(requestRefreshToken)
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    String token = jwtUtils.generateTokenFromUsername(user.getUsername());
+                    return ResponseEntity.ok(new TokenRefreshResponse(token, requestRefreshToken));
+                })
+                .orElseThrow(() -> new TokenRefreshException(requestRefreshToken,
+                        "Refresh token is not in database!"));
+    }
+    
+    @PostMapping("/logout")
+    public ResponseEntity<?> logoutUser() {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        refreshTokenService.deleteByUserId(userDetails.getId());
+        return ResponseEntity.ok(new MessageResponse("Log out successful!"));
     }
 
     @PostMapping("/signup")

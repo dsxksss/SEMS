@@ -136,18 +136,18 @@
 
       <el-form-item label="赛事状态" prop="status">
         <el-select v-model="eventForm.status" placeholder="请选择赛事状态" class="w-full">
-          <el-option label="即将开始" value="PENDING" />
-          <el-option label="进行中" value="ONGOING" />
-          <el-option label="已完成" value="COMPLETED" />
-          <el-option label="已取消" value="CANCELLED" />
+          <el-option
+            v-for="status in ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED']"
+            :key="status"
+            :label="{
+              'UPCOMING': '即将开始',
+              'ONGOING': '进行中',
+              'COMPLETED': '已完成',
+              'CANCELLED': '已取消'
+            }[status]"
+            :value="status"
+          ></el-option>
         </el-select>
-      </el-form-item>
-      
-      <el-form-item label="赛事图片" prop="eventImage">
-        <el-input
-          v-model="eventForm.eventImage"
-          placeholder="请输入赛事图片URL"
-        />
       </el-form-item>
 
       <!-- 提交按钮 -->
@@ -168,7 +168,6 @@ import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import eventsAPI from '@/api/eventsAPI';
 import categoryAPI from '@/api/categoryAPI';
-import type { Event } from '@/api/eventsAPI';
 import type { EventCategory } from '@/types/event';
 
 const router = useRouter();
@@ -194,8 +193,7 @@ const eventForm = reactive({
   registrationDeadline: '',
   maxParticipants: 100,
   currentParticipants: 0,
-  eventImage: '',
-  status: 'PENDING',
+  status: 'UPCOMING' as 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED',
   category: null as null | number,
   isActive: true
 });
@@ -218,7 +216,7 @@ const rules = reactive<FormRules>({
   endTime: [
     { required: true, message: '请选择结束时间', trigger: 'change' },
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if (value && eventForm.startTime && new Date(value) <= new Date(eventForm.startTime)) {
           callback(new Error('结束时间必须晚于开始时间'));
         } else {
@@ -231,7 +229,7 @@ const rules = reactive<FormRules>({
   registrationDeadline: [
     { required: true, message: '请选择报名截止时间', trigger: 'change' },
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if (value && eventForm.startTime && new Date(value) >= new Date(eventForm.startTime)) {
           callback(new Error('报名截止时间必须早于开始时间'));
         } else {
@@ -289,8 +287,7 @@ const loadEvent = async () => {
     eventForm.endTime = event.endTime;
     eventForm.registrationDeadline = event.registrationDeadline;
     eventForm.maxParticipants = event.maxParticipants;
-    eventForm.currentParticipants = event.currentParticipants || 0;
-    eventForm.eventImage = event.eventImage || '';
+    eventForm.currentParticipants = 0; // 默认值，因为API不提供该字段
     eventForm.status = event.status;
     eventForm.category = event.category.id;
     eventForm.isActive = event.isActive;
@@ -323,14 +320,14 @@ const submitForm = async () => {
           endTime: eventForm.endTime,
           registrationDeadline: eventForm.registrationDeadline,
           maxParticipants: eventForm.maxParticipants,
-          eventImage: eventForm.eventImage || null,
           status: eventForm.status,
+          isActive: eventForm.isActive,
           category: { id: eventForm.category } as any
         };
         
         await eventsAPI.updateEvent(eventId, eventToUpdate);
         ElMessage.success('赛事更新成功！');
-        router.push('/admin/events');
+        router.push('/admin/events/list');
       } catch (err: any) {
         console.error('更新赛事失败', err);
         error.value = err.response?.data?.message || '更新赛事失败，请重试';
@@ -345,7 +342,7 @@ const submitForm = async () => {
 
 // 返回列表
 const goBack = () => {
-  router.push('/admin/events');
+  router.push('/admin/events/list');
 };
 
 onMounted(() => {

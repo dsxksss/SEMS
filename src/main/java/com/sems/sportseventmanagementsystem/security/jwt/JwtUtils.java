@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -22,6 +23,9 @@ public class JwtUtils {
 
     @Value("${jwt.expirationMs}")
     private int jwtExpirationMs;
+    
+    @Value("${jwt.refreshExpirationMs:604800000}") // 默认7天
+    private int refreshTokenExpirationMs;
 
     public String generateJwtToken(Authentication authentication) {
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
@@ -30,6 +34,27 @@ public class JwtUtils {
                 .setSubject(userPrincipal.getUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .signWith(key(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    
+    public String generateTokenFromUsername(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .signWith(key(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    
+    public String generateRefreshToken(Authentication authentication) {
+        UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
+        
+        return Jwts.builder()
+                .setSubject(userPrincipal.getUsername())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date((new Date()).getTime() + refreshTokenExpirationMs))
+                .setId(UUID.randomUUID().toString()) // 添加唯一ID，用于刷新令牌
                 .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -62,5 +87,20 @@ public class JwtUtils {
         }
 
         return false;
+    }
+    
+    public long getExpirationFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+            
+            return claims.getExpiration().getTime();
+        } catch (Exception e) {
+            logger.error("Could not get expiration from token: {}", e.getMessage());
+            return 0;
+        }
     }
 } 

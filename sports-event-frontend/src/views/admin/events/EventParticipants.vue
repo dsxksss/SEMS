@@ -204,24 +204,7 @@ import { ElMessage } from 'element-plus';
 import eventsAPI from '@/api/eventsAPI';
 import registrationAPI from '@/api/registrationAPI';
 import type { Event } from '@/api/eventsAPI';
-
-interface Participant {
-  id: number;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-    avatar?: string;
-  };
-  event: {
-    id: number;
-    name: string;
-  };
-  registrationTime: string;
-  checkInTime?: string;
-  status: 'REGISTERED' | 'CHECKED_IN' | 'CANCELLED';
-  notes?: string;
-}
+import type { Participant, ParticipantQueryParams } from '@/api/registrationAPI';
 
 const router = useRouter();
 const route = useRoute();
@@ -276,12 +259,14 @@ const loadParticipants = async () => {
     }
     
     // 然后加载参与者
-    const response = await registrationAPI.getEventParticipants(eventId, {
+    const queryParams: ParticipantQueryParams = {
       page: currentPage.value - 1,
       size: pageSize.value,
       status: statusFilter.value,
       search: searchQuery.value
-    });
+    };
+    
+    const response = await registrationAPI.getEventParticipants(eventId, queryParams);
     
     participants.value = response.content;
     totalParticipants.value = response.totalElements;
@@ -308,7 +293,7 @@ const handleCurrentChange = (newPage: number) => {
 // 状态格式化
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
-    'PENDING': 'warning',
+    'UPCOMING': 'warning',
     'ONGOING': 'success',
     'COMPLETED': 'info',
     'CANCELLED': 'danger'
@@ -318,7 +303,7 @@ const getStatusType = (status: string) => {
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    'PENDING': '即将开始',
+    'UPCOMING': '即将开始',
     'ONGOING': '进行中',
     'COMPLETED': '已完成',
     'CANCELLED': '已取消'
@@ -435,7 +420,7 @@ const cancelParticipation = async () => {
 
 // 返回列表
 const goBack = () => {
-  router.push('/admin/events');
+  router.push('/admin/events/list');
 };
 
 onMounted(() => {

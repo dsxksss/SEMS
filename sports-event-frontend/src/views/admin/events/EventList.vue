@@ -150,10 +150,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus, Search } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import eventsAPI from '@/api/eventsAPI';
 import categoryAPI from '@/api/categoryAPI';
 import type { Event } from '@/api/eventsAPI';

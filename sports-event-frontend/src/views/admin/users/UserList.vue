@@ -251,7 +251,7 @@ const fetchUserList = async (retryCount = 0) => {
       try {
         // 统一角色格式为字符串数组
         const roles = Array.isArray(user.roles) 
-          ? user.roles.map(role => {
+          ? user.roles.map((role: any) => {
               if (typeof role === 'object' && role !== null && role.name) {
                 return role.name;
               }
@@ -289,7 +289,7 @@ const fetchUserList = async (retryCount = 0) => {
         
         // 角色筛选
         if (filterForm.role && Array.isArray(user.roles)) {
-          const hasRole = user.roles.some(role => {
+          const hasRole = user.roles.some((role: any) => {
             // 使用完全匹配，因为角色值可能是完整的ROLE_XX格式
             return role === filterForm.role;
           });
@@ -425,7 +425,7 @@ const handleDelete = (row: ExtendedUser) => {
     {
       confirmButtonText: '确认',
       cancelButtonText: '取消',
-      type: 'danger'
+      type: 'error'
     }
   )
     .then(async () => {

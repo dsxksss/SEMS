@@ -1,6 +1,5 @@
 package com.sems.sportseventmanagementsystem.controller;
 
-import com.sems.sportseventmanagementsystem.entity.ERole;
 import com.sems.sportseventmanagementsystem.entity.Role;
 import com.sems.sportseventmanagementsystem.entity.User;
 import com.sems.sportseventmanagementsystem.payload.response.MessageResponse;
